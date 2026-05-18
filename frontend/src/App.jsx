@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { useState, useEffect } from 'react';
 
 // --- IMPORTS CHUẨN 100% THEO FILE VẬT LÝ TRÊN TREE CỦA BẠN ---
 
