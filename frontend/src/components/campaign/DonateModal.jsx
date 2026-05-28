@@ -1,13 +1,36 @@
 import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { apiRequest } from '../../services/api'; // [BỔ SUNG] Import ống dẫn API
 
 export default function DonateModal({ availableBalance = 0, campaignId }) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
 
-  const handleDonate = (e) => {
+  const handleDonate = async (e) => {
     e.preventDefault();
-    // Logic gọi API POST /api/v1/transactions/donate sẽ đặt ở đây
-    console.log("Đang gửi:", { campaignId, amount: parseFloat(amount), note });
+    setIsSubmitting(true);
+    
+    try {
+      // [BỔ SUNG] Khớp với TransactionController (hoặc form DonateRequest của Backend)
+      await apiRequest('/api/v1/transactions/donate', {
+        method: 'POST',
+        body: JSON.stringify({
+          campaignId: campaignId,
+          amount: parseFloat(amount),
+          note: note
+        })
+      });
+
+      toast.success("Quyên góp thành công! Giao dịch đang chờ mạng PPoS xác thực.");
+      setAmount('');
+      setNote('');
+      if (onDonateSuccess) onDonateSuccess(); // Gọi hàm load lại trang để cập nhật thanh tiến trình
+
+    } catch (err) {
+      toast.error(err.message || 'Lỗi khi quyên góp!');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://172.16.133.172:8080").replace(/\/$/, "");
 
 export async function apiRequest(path, options = {}) {
   // [BỔ SUNG] Bọc toàn bộ logic vào khối try để bắt mọi loại lỗi mạng

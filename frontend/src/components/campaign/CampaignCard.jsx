@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 export default function CampaignCard({ campaign }) {
   return (
     <Link 
-      to={`/campaigns/${campaign.id}`} 
+      to={`/campaign/${campaign.id}`} 
       className="block bg-slate-900 border border-slate-800 p-5 rounded-2xl hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 transition group"
     >
       <div className="flex justify-between items-start mb-3">
