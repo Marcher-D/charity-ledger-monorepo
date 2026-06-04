@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitConfig {
     
     // Define Queue Naming Constants 
+    public static final String MEMPOOL_EXCHANGE = "mempool_exchange";
     public static final String MEMPOOL_QUEUE = "mempool_queue";
     public static final String MEMPOOL_DLQ = "mempool_dlq";
     public static final String EVENT_BUS_QUEUE = "event_bus_queue";
@@ -48,6 +49,14 @@ public class RabbitConfig {
             .withArgument("x-dead-letter-exchange", "")
             .withArgument("x-dead-letter-routing-key", EVENT_BUS_DLQ)
             .build();
+    }
+    @Bean 
+    public DirectExchange mempoolExchange() {
+        return new DirectExchange(MEMPOOL_EXCHANGE);
+    }
+    @Bean
+    public Binding bindingMempoolQueue(Queue mempoolQueue, DirectExchange mempoolExchange) {
+        return BindingBuilder.bind(mempoolQueue).to(mempoolExchange).with(MEMPOOL_QUEUE);
     }
 
     // Java-To-JSON Translator

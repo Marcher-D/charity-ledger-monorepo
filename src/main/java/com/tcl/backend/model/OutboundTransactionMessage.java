@@ -1,33 +1,52 @@
 package com.tcl.backend.model;
 
 import java.math.BigDecimal;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.tcl.backend.transactions.TransactionCache;
-
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-
-
-@Data 
-@Builder
-@NoArgsConstructor 
-@AllArgsConstructor
-@JsonIgnoreProperties(ignoreUnknown = true) // Important for distributed systems, if other people add a new field 
-// to network transaction layer, => tell Jackson parser: do not need to throw exception
+import java.util.Map; 
 
 public class OutboundTransactionMessage {
     private String txId;
-    private long nonce_order;
+    private long nonceOrder;
+
     private String type;
     private String senderAddress;
     private String targetAddress;
     private BigDecimal amount;
-    private long timestamp;
-    private TransactionCache.Payload payload;
+    private Long timestamp;
+    private Map<String, Object> payload;
     private String publicKey;
     private String signature;
-    private String txHash;
+
+    public OutboundTransactionMessage() {}
+
+    // Getters & Setters
+    public String getTxId() { return txId; }
+    public void setTxId(String txId) { this.txId = txId; }
+
+    public Long getNonceOrder() { return nonceOrder; }
+    public void setNonceOrder(Long nonceOrder) { this.nonceOrder = nonceOrder; }
+
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+
+    public String getSenderAddress() { return senderAddress; }
+    public void setSenderAddress(String senderAddress) { this.senderAddress = senderAddress; }
+
+    public String getTargetAddress() { return targetAddress; }
+    public void setTargetAddress(String targetAddress) { this.targetAddress = targetAddress; }
+
+    public BigDecimal getAmount() { return amount; }
+    public void setAmount(BigDecimal amount) { this.amount = amount; }
+
+    public Long getTimestamp() { return timestamp; }
+    public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
+
+    public Map<String, Object> getPayload() { return payload; }
+    public void setPayload(Map<String, Object> payload) { this.payload = payload; }
+
+    public String getPublicKey() { return publicKey; }
+    public void setPublicKey(String publicKey) { this.publicKey = publicKey; }
+
+    public String getSignature() { return signature; }
+    public void setSignature(String signature) { this.signature = signature; }
+
 }
