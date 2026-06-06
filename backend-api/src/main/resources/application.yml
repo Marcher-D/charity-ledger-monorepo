@@ -1,0 +1,103 @@
+# This file contains runtime configuration for the Spring Boot backend.
+# Syntax note:
+#   ${ENV_NAME:defaultValue}
+# means "use ENV_NAME if it exists, otherwise use defaultValue".
+
+# Embedded web server settings.
+server:
+  # API server port. Locally it runs on http://localhost:8080 unless SERVER_PORT overrides it.
+  port: ${SERVER_PORT:8080}
+
+# Standard Spring Boot configuration.
+spring:
+  application:
+    # Application name shown in logs and Spring context metadata.
+    name: transparent-charity-ledger-backend
+
+  # PostgreSQL connection used by Spring Data JPA and Flyway.
+  datasource:
+    # Default points to a local PostgreSQL database named charity_db.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/charity_db}
+    # Default username from the project draft/docker-compose example.
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    # Default password from the project draft/docker-compose example.
+    password: ${SPRING_DATASOURCE_PASSWORD:secretpassword}
+
+  # Flyway runs SQL migrations from src/main/resources/db/migration.
+  flyway:
+    # When true, Flyway creates/updates the schema before Hibernate validates it.
+    enabled: true
+
+  # JPA/Hibernate database behavior.
+  jpa:
+    hibernate:
+      # validate means Hibernate checks that entity classes match the database schema.
+      # It does not create or modify tables. Flyway owns schema creation.
+      ddl-auto: validate
+    # Avoids lazy database queries from happening accidentally while rendering HTTP responses.
+    open-in-view: false
+    properties:
+      hibernate:
+        # Makes Hibernate SQL logs easier to read if SQL logging is enabled later.
+        format_sql: true
+
+  # RabbitMQ connection used for mempool publishing and event-bus consuming.
+  rabbitmq:
+    # Default local RabbitMQ host.
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    # RabbitMQ AMQP port, not the management UI port.
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    # Default username from the project draft/docker-compose example.
+    username: ${SPRING_RABBITMQ_USERNAME:admin}
+    # Default password from the project draft/docker-compose example.
+    password: ${SPRING_RABBITMQ_PASSWORD:admin}
+
+# Custom application-specific settings.
+app:
+  # Browser frontend origins allowed to call this API.
+  # Add more comma-separated origins with APP_CORS_ALLOWED_ORIGINS if needed.
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+  # JWT settings used by JwtService.
+  jwt:
+    # Secret key for signing JWTs. Replace this in production with a strong private value.
+    # It must be long enough for HMAC signing; the current default is for local development only.
+    secret: ${APP_JWT_SECRET:replace-this-dev-secret-with-at-least-32-characters}
+    # Token lifetime in seconds. 3600 seconds = 1 hour.
+    expires-in-seconds: ${APP_JWT_EXPIRES_IN_SECONDS:3600}
+
+  # Queue names used by the messaging package.
+  rabbitmq:
+    # Outbound exchange owned by the RabbitMQ/on-off-chain bridge.
+    mempool-exchange: ${APP_RABBITMQ_MEMPOOL_EXCHANGE:mempool_exchange}
+    # Outbound queue. Backend publishes signed/canonical transaction messages here.
+    mempool-queue: ${APP_RABBITMQ_MEMPOOL_QUEUE:mempool_queue}
+    # Dead-letter queue for expired/failed mempool messages.
+    mempool-dlq: ${APP_RABBITMQ_MEMPOOL_DLQ:mempool_dlq}
+    # Inbound queue. Backend listens here for blockchain SUCCESS/FAILED results.
+    event-bus-queue: ${APP_RABBITMQ_EVENT_BUS_QUEUE:event_bus_queue}
+    # Dead-letter queue for event-bus messages that fail processing.
+    event-bus-dlq: ${APP_RABBITMQ_EVENT_BUS_DLQ:event_bus_dlq}
+
+  # Internal on-chain wallet/signing service.
+  # This service owns private keys; backend only asks it for wallet addresses and signatures.
+  onchain:
+    # Base URL for wallet creation and transaction signing API.
+    wallet-base-url: ${APP_ONCHAIN_WALLET_BASE_URL:http://localhost:9090}
+    # Shared secret sent as X-Internal-Api-Key. Replace outside local development.
+    internal-api-key: ${APP_ONCHAIN_INTERNAL_API_KEY:dev-secret}
+    # HTTP timeout for connect/read calls to the on-chain service.
+    timeout-ms: ${APP_ONCHAIN_TIMEOUT_MS:5000}
+
+  # Demo/bootstrap admin account.
+  # This exists because there is no public admin registration endpoint.
+  bootstrap-admin:
+    # If true, BootstrapAdminInitializer creates the admin if the email does not exist.
+    enabled: ${APP_BOOTSTRAP_ADMIN_ENABLED:true}
+    # Default admin username.
+    username: ${APP_BOOTSTRAP_ADMIN_USERNAME:admin}
+    # Default admin login email.
+    email: ${APP_BOOTSTRAP_ADMIN_EMAIL:admin@tcl.local}
+    # Default admin login password. Change this outside local development.
+    password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:Admin123!}
