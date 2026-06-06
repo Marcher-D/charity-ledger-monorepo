@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiRequest } from '../../services/api';
 import toast from 'react-hot-toast';
-// Import cái Modal Donate của ông anh vào đây (nếu để file riêng)
-// import DonateModal from './DonateModal'; 
+import DonateModal from '../../components/campaign/DonateModal';
+import { isAdminRole } from '../../services/auth';
 
 export default function CampaignDetail() {
   const { id } = useParams(); // [BỔ SUNG] Lấy ID chiến dịch từ thanh địa chỉ trình duyệt
@@ -11,10 +11,11 @@ export default function CampaignDetail() {
   // [BỔ SUNG] Khởi tạo State chứa dữ liệu Backend
   const [campaign, setCampaign] = useState(null);
   const [donors, setDonors] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // [BỔ SUNG] Hàm tải dữ liệu
-  const fetchCampaignData = async () => {
+  const fetchCampaignData = useCallback(async () => {
     try {
       // Dùng Promise.all để gọi 2 API cùng lúc cho nhanh
       const [campaignData, donorsData] = await Promise.all([
@@ -24,17 +25,31 @@ export default function CampaignDetail() {
       
       setCampaign(campaignData);
       setDonors(donorsData);
+
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        try {
+          const profileData = await apiRequest('/api/v1/users/me');
+          setProfile(profileData);
+        } catch (profileError) {
+          console.error("Không thể tải profile quyên góp:", profileError);
+          setProfile(null);
+        }
+      } else {
+        setProfile(null);
+      }
     } catch (err) {
+      console.error("Lỗi tải chiến dịch:", err);
       toast.error("Không thể tải thông tin chiến dịch!");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   // [BỔ SUNG] Chạy hàm tải dữ liệu ngay khi vừa mở trang
   useEffect(() => {
     fetchCampaignData();
-  }, [id]);
+  }, [fetchCampaignData]);
 
   if (loading) {
     return <div className="text-center py-20 text-xl font-bold">Đang tải dữ liệu từ Blockchain...</div>;
@@ -46,11 +61,12 @@ export default function CampaignDetail() {
 
   // Tính phần trăm cho thanh tiến trình
   const progressPercent = Math.min((campaign.currentRaised / campaign.targetAmount) * 100, 100);
+  const canDonate = campaign.status === 'OPEN' && profile && !isAdminRole(profile.role);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header Info */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+      <div className="bg-emerald-600 rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
         {/* Nút hiển thị ảnh thật từ Backend */}
         <div 
           className="h-64 bg-gray-200 bg-cover bg-center" 
@@ -64,15 +80,15 @@ export default function CampaignDetail() {
               {campaign.status}
             </span>
           </div>
-          <p className="text-gray-600 mb-8 leading-relaxed">
+          <p className="text-black-600 mb-8 leading-relaxed">
             {campaign.description}
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             {/* Progress Area */}
             <div>
-              <div className="flex justify-between text-sm text-gray-500 mb-2">
-                <span className="font-semibold text-gray-700">Progress</span>
+              <div className="flex justify-between text-sm text-black-900 mb-2">
+                <span className="font-semibold text-black-700">Progress</span>
                 <span>{campaign.currentRaised} / {campaign.targetAmount} TCL</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 mb-6">
@@ -84,12 +100,18 @@ export default function CampaignDetail() {
               </div>
             </div>
 
-            {/* Donate Form - Có thể nhúng nguyên cái DonateModal.jsx của ông anh vào đây */}
-            {/* <DonateModal campaignId={campaign.id} availableBalance={1000} onDonateSuccess={fetchCampaignData} /> */}
-            <div className="bg-brand-surface p-6 rounded-xl border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4 text-brand-primary">Module Donate nằm ở đây</h3>
-              <p className="text-sm text-gray-500">Ông anh thay khối div này bằng component DonateModal nhé!</p>
-            </div>
+            {canDonate ? (
+              <DonateModal campaignId={campaign.id} availableBalance={profile.availableBalance} onDonateSuccess={fetchCampaignData} />
+            ) : (
+              <div className="bg-brand-surface p-6 rounded-xl border border-gray-200">
+                <h3 className="text-lg font-semibold mb-4 text-brand-primary">Donate</h3>
+                <p className="text-sm text-gray-500">
+                  {profile && isAdminRole(profile.role)
+                    ? 'Admin không có ví quyên góp. Dùng Admin Panel để duyệt chiến dịch.'
+                    : 'Đăng nhập bằng tài khoản user để quyên góp cho chiến dịch đang mở.'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

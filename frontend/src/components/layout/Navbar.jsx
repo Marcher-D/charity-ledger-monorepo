@@ -5,36 +5,58 @@ import { PlusCircle, Wallet, LogOut, ShieldAlert } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { jwtDecode } from 'jwt-decode'; 
 import { apiRequest } from '../../services/api'; 
+import { isAdminRole } from '../../services/auth';
 
-export default function Navbar({ isLoggedIn, onLogout }) {
+export default function Navbar({ isLoggedIn, onLogout, authVersion }) {
   const navigate = useNavigate();
   
-  // [BỔ SUNG] State lưu thông tin ví của người dùng
+  // State lưu thông tin ví của người dùng
   const [walletInfo, setWalletInfo] = useState(null);
-  
-  let isAdmin = false;
-  if (isLoggedIn) {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        isAdmin = decoded.role === 'ROLE_ADMIN'; 
-      } catch (error) {
-        console.error("Lỗi đọc token:", error);
-      }
-    }
-  }
+  // State phân quyền
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // [BỔ SUNG] Tự động kéo số dư ví khi đã đăng nhập
+  // [SỬA ĐOẠN NÀY] GỘP 2 USEEFFECT THÀNH 1 LUỒNG CHẠY THẲNG TẮP
   useEffect(() => {
-    if (isLoggedIn) {
+    // 1. Nếu chưa đăng nhập -> Dọn dẹp nhà cửa và nghỉ
+    if (!isLoggedIn) {
+      setWalletInfo(null);
+      setIsAdmin(false);
+      return;
+    }
+
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+
+    try {
+      // 2. Soi Token ngay lập tức
+      const decoded = jwtDecode(token);
+      const isRoleAdmin = isAdminRole(decoded.role);
+      
+      // Cập nhật State cho UI (để hiện nút Admin Panel)
+      setIsAdmin(isRoleAdmin); 
+
+      // 3. CHỐT CHẶN TỬ THẦN: Nếu là Admin thì DỪNG LẠI NGAY TẠI ĐÂY!
+      // Không cho phép code chạy xuống dòng gọi API ví bên dưới nữa.
+      if (isRoleAdmin) {
+        setWalletInfo(null); 
+        return; 
+      }
+      setWalletInfo(null);
+
+      // 4. Nếu trót lọt qua được bước 3 (tức là User thường), mới đi lấy Ví
       apiRequest('/api/v1/users/me')
         .then(data => setWalletInfo(data))
-        .catch(err => console.log("Lọc lỗi ngầm Navbar:", err.message));
-    } else {
-      setWalletInfo(null); // Đăng xuất thì dọn ví
+        .catch(err => {
+          console.error("Lỗi ngầm Navbar:", err.message);
+          // Chỉ báo lỗi nếu User thường thật sự bị sập API
+          toast.error("Không thể tải dữ liệu ví!"); 
+        });
+
+    } catch (error) {
+      console.error("Lỗi đọc token:", error);
+      setIsAdmin(false);
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, authVersion]); // Đọc lại token khi phiên đăng nhập thay đổi
 
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
@@ -59,6 +81,7 @@ export default function Navbar({ isLoggedIn, onLogout }) {
 
         <div className="flex items-center space-x-6 text-sm">
           
+          {/* Menu Admin Panel nổi bật */}
           {isAdmin && (
             <Link to="/admin" className="flex items-center space-x-2 text-red-400 hover:text-red-300 transition-colors font-bold border border-red-500/30 px-3 py-1.5 rounded bg-red-500/10">
               <ShieldAlert size={18} />
@@ -66,27 +89,38 @@ export default function Navbar({ isLoggedIn, onLogout }) {
             </Link>
           )}
 
-          <Link to="/create-campaign" className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
-            <PlusCircle size={18} />
-            <span className="font-medium">CREATE CAMPAIGN</span>
-          </Link>
+          {!isAdmin && (
+            <Link to="/create-campaign" className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
+              <PlusCircle size={18} />
+              <span className="font-medium">CREATE CAMPAIGN</span>
+            </Link>
+          )}
 
           {isLoggedIn ? (
             <>
-              {/* [BỔ SUNG] Giao diện ví động, lấy data thật từ API */}
-              <Link to="/dashboard" className="flex items-center space-x-3 bg-brand-card border border-gray-800 px-4 py-2 rounded-lg hover:border-brand-success/50 transition-colors">
-                <Wallet size={18} className="text-gray-400" />
-                <div className="flex flex-col text-right leading-none">
-                  {walletInfo ? (
-                    <>
-                      <span className="font-bold text-brand-success text-sm">{walletInfo.availableBalance} TCL</span>
-                      <span className="text-[10px] text-gray-500 mt-1">{walletInfo.pendingBalance} pending</span>
-                    </>
-                  ) : (
-                    <span className="font-bold text-brand-success text-sm">My Dashboard</span>
-                  )}
-                </div>
-              </Link>
+              {/* Phân tách UI Ví: Admin hiện nhãn Ban Quản Trị, User hiện số dư ví */}
+              {isAdmin ? (
+                // UI tinh tế dành riêng cho Admin
+                <Link to="/admin" className="flex items-center space-x-3 bg-gray-900 border border-red-900/30 px-4 py-2 rounded-lg text-red-400 font-medium hover:border-red-500/60 transition-colors">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                  <span>Hệ Thống Admin</span>
+                </Link>
+              ) : (
+                // UI Ví lấy data thật từ API dành cho User thường
+                <Link to="/dashboard" className="flex items-center space-x-3 bg-brand-card border border-gray-800 px-4 py-2 rounded-lg hover:border-brand-success/50 transition-colors">
+                  <Wallet size={18} className="text-gray-400" />
+                  <div className="flex flex-col text-right leading-none">
+                    {walletInfo ? (
+                      <>
+                        <span className="font-bold text-brand-success text-sm">{walletInfo.availableBalance} TCL</span>
+                        <span className="text-[10px] text-gray-500 mt-1">{walletInfo.pendingBalance} pending</span>
+                      </>
+                    ) : (
+                      <span className="font-bold text-brand-success text-sm">My Dashboard</span>
+                    )}
+                  </div>
+                </Link>
+              )}
 
               <button onClick={handleLogout} className="flex items-center space-x-2 text-red-500 hover:text-red-400 font-bold transition-colors ml-4">
                 <LogOut size={18} />

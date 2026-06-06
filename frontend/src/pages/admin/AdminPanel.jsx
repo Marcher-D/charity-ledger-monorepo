@@ -78,14 +78,9 @@ export default function AdminPanel() {
                 </td>
               </tr>
             )) : (
-              // [BỔ SUNG] Dòng mặc định khi không có data (Giữ nguyên form UI gốc bạn đưa)
-              <tr className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-900">Medical Aid Fund</td>
-                <td className="px-6 py-4 text-gray-700">2000.00</td>
-                <td className="px-6 py-4 text-gray-500">2026-05-16</td>
-                <td className="px-6 py-4 text-right space-x-3">
-                  <button className="text-green-600 font-semibold hover:text-green-800">Approve</button>
-                  <button className="text-red-600 font-semibold hover:text-red-800">Reject</button>
+              <tr>
+                <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                  No pending campaigns.
                 </td>
               </tr>
             )}

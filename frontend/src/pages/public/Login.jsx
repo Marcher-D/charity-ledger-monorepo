@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { apiRequest } from '../../services/api';
+import { jwtDecode } from 'jwt-decode';
+import { isAdminRole } from '../../services/auth';
 
 // [BỔ SUNG] Nhận hàm 'onLoginSuccess' từ App.jsx ném vào
 export default function Login({ onLoginSuccess }) {
@@ -26,12 +28,23 @@ export default function Login({ onLoginSuccess }) {
       // [BỔ SUNG] Kiểm tra, lưu token vào trình duyệt và điều hướng
       if (data && data.accessToken) {
         localStorage.setItem("accessToken", data.accessToken);
-        toast.success("Đăng nhập thành công!");
 
-        // [BỔ SUNG] Kích hoạt hàm báo cáo để đổi giao diện Navbar
+        // 1. Giải mã token để xem người đăng nhập là ai TRƯỚC KHI CHUYỂN TRANG
+        const decoded = jwtDecode(data.accessToken);
         if (onLoginSuccess) onLoginSuccess();
         
-        navigate('/dashboard'); // Đá người dùng vào thẳng bảng điều khiển
+        // 2. Phân luồng điều hướng chuẩn xác ngay từ vòng gửi xe
+        if (isAdminRole(decoded.role)) {
+          // Nếu là ADMIN, điều hướng thẳng lên tổng dinh Admin Panel, loại bỏ hoàn toàn /dashboard
+          navigate('/admin', { replace: true });
+        } else {
+          // Nếu là USER thường, cho ra trang Dashboard cá nhân
+          navigate('/dashboard', { replace: true });
+        }
+
+        // 3. Sau khi đã chọn đúng nhà để đi, mới báo cáo trạng thái Login
+        // [BỔ SUNG] Kích hoạt hàm báo cáo để đổi giao diện Navbar
+        toast.success("Đăng nhập thành công!");
       }
     } catch (err) {
       // [BỔ SUNG] Bắt lỗi Message và Validation

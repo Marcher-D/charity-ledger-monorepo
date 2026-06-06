@@ -4,6 +4,8 @@ import { UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { apiRequest } from '../../services/api';
+import { jwtDecode } from 'jwt-decode';
+import { isAdminRole } from '../../services/auth';
 
 // [BỔ SUNG] Nhận hàm 'onLoginSuccess' từ App.jsx ném vào
 export default function Register({ onLoginSuccess }) {
@@ -26,10 +28,21 @@ export default function Register({ onLoginSuccess }) {
       
       // [BỔ SUNG] Lưu token, báo cáo trạng thái và chuyển trang
       if (data && data.accessToken) {
-        localStorage.setItem("accessToken", data.accessToken);
-        toast.success("Đăng ký thành công!");
+        localStorage.setItem("accessToken", data.accessToken);  
+
+        // 1. Soi quyền từ Token trước
+        const decoded = jwtDecode(data.accessToken);
         if (onLoginSuccess) onLoginSuccess(); // Kích hoạt đổi UI Navbar
-        navigate('/dashboard'); // Đá sang trang Dashboard
+        
+        // 2. Chuyển hướng trúng đích né vùng lỗi
+        if (isAdminRole(decoded.role)) {
+          navigate('/admin', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+
+        // 3. Bật trạng thái login sau khi đã đổi tuyến đường
+        toast.success("Đăng ký thành công!");
       }
     } catch (err) {
       // [BỔ SUNG] Xử lý lỗi Message cho Toast

@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
-import { jwtDecode } from 'jwt-decode'; // [BỔ SUNG] Import máy soi JWT
+import { jwtDecode } from 'jwt-decode'; 
 
 // --- IMPORTS ---
 import MainLayout from './components/layout/MainLayout';
@@ -12,9 +12,10 @@ import CampaignDetail from './pages/public/CampaignDetail';
 import Dashboard from './pages/user/Dashboard';
 import CreateCampaign from './pages/user/CreateCampaign';
 import AdminPanel from './pages/admin/AdminPanel';
+import { isAdminRole } from './services/auth';
 
 // =========================================================================
-// [BỔ SUNG] CHỐT CHẶN BẢO MẬT (PROTECTED ROUTE)
+// [SỬA ĐỔI] CHỐT CHẶN BẢO MẬT PHÂN QUYỀN HAI CHIỀU (PROTECTED ROUTE)
 // =========================================================================
 const ProtectedRoute = ({ isLoggedIn, requireAdmin, children }) => {
   // 1. Nếu chưa đăng nhập -> Đá ra chuồng gà (Trang Login)
@@ -22,22 +23,39 @@ const ProtectedRoute = ({ isLoggedIn, requireAdmin, children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // 2. Nếu route này yêu cầu quyền Admin, lôi Token ra soi
-  if (requireAdmin) {
-    const token = localStorage.getItem('accessToken');
+  const token = localStorage.getItem('accessToken');
+  let userRole = '';
+
+  if (token) {
     try {
       const decoded = jwtDecode(token);
-      if (decoded.role !== 'ROLE_ADMIN') {
-        toast.error("Khu vực cấm! Chỉ dành cho Quản trị viên.");
-        return <Navigate to="/" replace />; // Không phải Admin -> Đá về Trang chủ
-      }
+      userRole = decoded.role; // Lấy role thật từ Token ra để đối chiếu
     } catch (err) {
-      // Token bị hỏng / giải mã lỗi -> Đá ra trang Login bắt đăng nhập lại
+      console.error("Lỗi đọc token bảo mật:", err);
       return <Navigate to="/login" replace />;
     }
   }
 
-  // 3. Vượt qua mọi bài kiểm tra -> Mở cửa cho vào Component
+  const isAdmin = isAdminRole(userRole);
+
+  // 2. TÌNH HUỐNG 1: Tuyến đường yêu cầu ADMIN, nhưng người vào không phải Admin
+  if (requireAdmin) {
+    if (!isAdmin) {
+      toast.error("Khu vực cấm! Chỉ dành cho Quản trị viên.");
+      return <Navigate to="/" replace />; // Đá về Trang chủ
+    }
+  } 
+  
+  // 3. TÌNH HUỐNG 2 [QUAN TRỌNG]: Tuyến đường thông thường của USER, nhưng ADMIN lại đi lạc vào
+  else {
+    if (isAdmin) {
+      // Chặn đứng Admin tại cửa khẩu, điều hướng thẳng về tổng dinh Admin Panel
+      // Tuyệt đối không cho 'children' (ở đây là Dashboard) có cơ hội render hay chạy useEffect gọi API ví lỗi
+      return <Navigate to="/admin" replace />; 
+    }
+  }
+
+  // 4. Vượt qua mọi bài kiểm tra -> Mở cửa cho vào Component hợp pháp
   return children;
 };
 // =========================================================================
@@ -45,7 +63,8 @@ const ProtectedRoute = ({ isLoggedIn, requireAdmin, children }) => {
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  // [BỔ SUNG] State này giúp tránh lỗi nháy màn hình Login khi người dùng ấn F5 ở trang Dashboard
+  const [authVersion, setAuthVersion] = useState(0);
+  // State này giúp tránh lỗi nháy màn hình Login khi người dùng ấn F5 ở trang Dashboard
   const [isChecking, setIsChecking] = useState(true); 
 
   useEffect(() => {
@@ -58,10 +77,12 @@ export default function App() {
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
+    setAuthVersion(version => version + 1);
   };
 
   const handleLogoutSuccess = () => {
     setIsLoggedIn(false);
+    setAuthVersion(version => version + 1);
   };
   
   // Nếu React còn đang bận lục két sắt tìm Token thì chưa vội render giao diện
@@ -87,7 +108,7 @@ export default function App() {
       />
       
       <Routes>
-        <Route element={<MainLayout isLoggedIn={isLoggedIn} onLogout={handleLogoutSuccess} />}>
+        <Route element={<MainLayout isLoggedIn={isLoggedIn} onLogout={handleLogoutSuccess} authVersion={authVersion} />}>
           
           {/* --- VÙNG XANH: KHÁCH VÀO TỰ DO --- */}
           <Route path="/" element={<Home />} />
@@ -97,13 +118,13 @@ export default function App() {
           
           {/* --- VÙNG VÀNG: BẮT BUỘC ĐĂNG NHẬP (USER) --- */}
           <Route path="/dashboard" element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} requireAdmin={false}>
               <Dashboard />
             </ProtectedRoute> 
           } />
           
           <Route path="/create-campaign" element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} requireAdmin={false}>
               <CreateCampaign />
             </ProtectedRoute>
           } />

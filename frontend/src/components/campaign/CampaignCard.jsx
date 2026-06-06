@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 
 // Component nhận vào 1 object campaign chứa dữ liệu từ API

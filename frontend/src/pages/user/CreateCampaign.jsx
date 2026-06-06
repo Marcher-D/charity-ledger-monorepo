@@ -61,10 +61,10 @@ export default function CreateCampaign() {
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Campaign</h1>
       <p className="text-gray-500 mb-8">Submit a new charity campaign. It will be reviewed by administrators before being recorded on the ledger.</p>
 
-      <form className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 space-y-6" onSubmit={handleSubmit}>
+      <form className="bg-emerald-600 p-8 rounded-xl shadow-sm border border-gray-100 space-y-6" onSubmit={handleSubmit}>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Title</label>
+          <label className="block text-sm font-bold text-gray-700 mb-1">Campaign Title</label>
           <input 
             type="text" 
             placeholder="e.g., Clean Water Fund" 
@@ -76,7 +76,7 @@ export default function CreateCampaign() {
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Target Amount (TCL)</label>
+          <label className="block text-sm font-bold text-gray-700 mb-1">Target Amount (TCL)</label>
           <input 
             type="number" 
             step="0.01" 
@@ -89,7 +89,7 @@ export default function CreateCampaign() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image URL</label>
+          <label className="block text-sm font-bold text-gray-700 mb-1">Cover Image URL</label>
           <input 
             type="text" 
             placeholder="https://example.com/image.jpg" 
@@ -101,7 +101,7 @@ export default function CreateCampaign() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
           <textarea 
             rows="4" 
             placeholder="Detail the purpose of your campaign..." 
@@ -115,7 +115,7 @@ export default function CreateCampaign() {
         <button 
           type="submit" 
           disabled={isSubmitting}
-          className={`w-full py-3 text-white font-medium rounded-md transition-colors ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-accent'}`}
+          className={`w-full py-3 text-white font-bold rounded-md transition-colors ${isSubmitting ? 'bg-gray-400 cursor-not-allowed border border-gray-400 p-4 rounded-md' : 'bg-brand-primary hover:bg-brand-accent border border-gray-400 p-4 rounded-md'}`}
         >
           {isSubmitting ? 'Submitting...' : 'Submit for Approval'}
         </button>

@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function TransactionHistory({ transactions = [] }) {
   // Hàm phụ trợ map màu cho trạng thái (Không làm thay đổi logic gốc)
   const getStatusColor = (status) => {
