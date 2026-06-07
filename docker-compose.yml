@@ -1,0 +1,105 @@
+services:
+
+  # ── INFRASTRUCTURE ───────────────────────────────────────────────────────────
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: charity_mq
+    ports:
+      - "5672:5672"     # AMQP port for services to connect
+      - "15672:15672"   # Management UI at http://localhost:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    networks:
+      - charity_net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: charity_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: charity_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - charity_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d charity_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── APPLICATION SERVICES ──────────────────────────────────────────────────────
+
+  backend-api:
+    build:
+      context: ./backend-api   # Billy's Spring Boot project (has its own Dockerfile)
+    container_name: charity_backend
+    ports:
+      - "8080:8080"
+    environment:
+      # Spring Boot reads SPRING_RABBITMQ_HOST → spring.rabbitmq.host
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=admin
+      - SPRING_RABBITMQ_PASSWORD=admin
+      # PostgreSQL connection
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/charity_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=secretpassword
+      # RabbitMQ queue/exchange names (must match what blockchain nodes use)
+      - APP_RABBITMQ_MEMPOOL_EXCHANGE=mempool_exchange
+      - APP_RABBITMQ_MEMPOOL_QUEUE=mempool_queue
+      - APP_RABBITMQ_EVENT_BUS_EXCHANGE=event_bus_exchange
+      - APP_RABBITMQ_EVENT_BUS_QUEUE=event_bus_queue
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - charity_net
+
+  frontend:
+    build:
+      context: ./frontend   # Marcher-D's React/Vite project (Dockerfile added)
+    container_name: charity_frontend
+    ports:
+      - "3000:80"   # host:3000 → nginx inside:80
+    depends_on:
+      - backend-api
+    networks:
+      - charity_net
+
+  # on-chain-core (Khoa + Khang) — uncomment when ready
+  # on-chain-core:
+  #   build:
+  #     context: ./on-chain-core
+  #   environment:
+  #     - RABBITMQ_HOST=rabbitmq
+  #     - RABBITMQ_PORT=5672
+  #     - RABBITMQ_USERNAME=admin
+  #     - RABBITMQ_PASSWORD=admin
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   networks:
+  #     - charity_net
+
+# ── PERSISTENT STORAGE ────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+
+# ── INTERNAL NETWORK ──────────────────────────────────────────────────────────
+networks:
+  charity_net:
+    driver: bridge
