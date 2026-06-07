@@ -22,7 +22,7 @@ class RabbitMempoolPublisherTest {
     private final TransactionSigner transactionSigner = mock(TransactionSigner.class);
     private final RabbitMempoolPublisher publisher = new RabbitMempoolPublisher(
             rabbitTemplate,
-            new RabbitQueueProperties("mempool_exchange", "mempool_queue", "mempool_dlq", "event_bus_queue", "event_bus_dlq"),
+            new RabbitQueueProperties("mempool_exchange", "mempool_queue", "event_bus_exchange", "event_bus_queue"),
             transactionSigner,
             fixedNonceService(),
             new MoneyFormatter()
