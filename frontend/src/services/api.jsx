@@ -1,0 +1,67 @@
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/$/, "");
+
+export async function apiRequest(path, options = {}) {
+  // [BỔ SUNG] Bọc toàn bộ logic vào khối try để bắt mọi loại lỗi mạng
+  try {
+    const token = localStorage.getItem("accessToken");
+    const hasBody = options.body !== undefined && options.body !== null;
+
+    const headers = {
+      Accept: "application/json",
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers ?? {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers
+    });
+
+    const text = await response.text();
+    let data = null;
+
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = text;
+    }
+
+    if (!response.ok) {
+      const message = typeof data === "object" && data !== null
+        ? data.message ?? "API request failed"
+        : response.statusText || "API request failed";
+      const error = new Error(message);
+      error.status = response.status;
+      error.data = data;
+
+      if (response.status === 401) {
+        localStorage.removeItem("accessToken");
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      }
+
+      if (response.status === 404) {
+        console.warn("404: Resource does not exist");
+      }
+
+      throw error;
+    }
+
+    return data;
+
+  } catch (systemError) {
+    // [BỔ SUNG] Khối catch này sẽ tóm gọn lỗi sập mạng khi chưa bật Backend
+    // Nếu là lỗi do chúng ta chủ động throw ở trên (đã có thuộc tính status), cứ thế ném tiếp ra ngoài
+    if (systemError.status) {
+      throw systemError;
+    }
+
+    // Nếu là lỗi hệ thống thô (như sập mạng, sập nguồn server), đóng gói lại chuẩn chỉnh 100%
+    const networkError = new Error("Không thể kết nối đến server Backend (8080)!");
+    networkError.status = 500;
+    networkError.data = null;
+    throw networkError;
+  }
+}
