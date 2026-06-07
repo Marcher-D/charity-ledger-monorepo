@@ -69,16 +69,14 @@ app:
 
   # Queue names used by the messaging package.
   rabbitmq:
-    # Outbound exchange owned by the RabbitMQ/on-off-chain bridge.
+    # Outbound exchange: routes backend transactions into mempool_queue.
     mempool-exchange: ${APP_RABBITMQ_MEMPOOL_EXCHANGE:mempool_exchange}
-    # Outbound queue. Backend publishes signed/canonical transaction messages here.
+    # Outbound queue: backend publishes signed/canonical transaction messages here.
     mempool-queue: ${APP_RABBITMQ_MEMPOOL_QUEUE:mempool_queue}
-    # Dead-letter queue for expired/failed mempool messages.
-    mempool-dlq: ${APP_RABBITMQ_MEMPOOL_DLQ:mempool_dlq}
-    # Inbound queue. Backend listens here for blockchain SUCCESS/FAILED results.
+    # Inbound exchange: blockchain nodes publish results through this exchange.
+    event-bus-exchange: ${APP_RABBITMQ_EVENT_BUS_EXCHANGE:event_bus_exchange}
+    # Inbound queue: backend listens here for blockchain SUCCESS/FAILED results.
     event-bus-queue: ${APP_RABBITMQ_EVENT_BUS_QUEUE:event_bus_queue}
-    # Dead-letter queue for event-bus messages that fail processing.
-    event-bus-dlq: ${APP_RABBITMQ_EVENT_BUS_DLQ:event_bus_dlq}
 
   # Internal on-chain wallet/signing service.
   # This service owns private keys; backend only asks it for wallet addresses and signatures.
