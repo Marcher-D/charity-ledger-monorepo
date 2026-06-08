@@ -15,9 +15,9 @@ export default function AdminPanel() {
         setCampaigns(data.items || []);
       } catch (err) {
         if (err.status === 403) {
-          toast.error("Truy cập bị từ chối! Bạn không có quyền Admin.");
+          toast.error("Access denied! You have no admin rights.");
         } else {
-          toast.error(err.message || "Không thể tải danh sách duyệt.");
+          toast.error(err.message || "Cannot load pending campaign list.");
         }
       }
     };
@@ -28,49 +28,49 @@ export default function AdminPanel() {
   const handleAction = async (id, action) => {
     try {
       await apiRequest(`/api/v1/admin/campaigns/${id}/${action}`, { method: 'PUT' });
-      toast.success(`Đã gửi lệnh ${action} lên mạng lưới!`);
+      toast.success(`Send ${action} to network!`);
       // Cập nhật lại list sau khi xử lý thành công
       setCampaigns(prev => prev.filter(camp => camp.id !== id));
     } catch (err) {
       if (err.status === 403) {
-        toast.error("Bạn không có quyền thực hiện hành động này!");
+        toast.error("You have no rights to make this action!");
       } else if (err.status === 409) {
         // [BỔ SUNG] Bắt lỗi 409 Conflict theo yêu cầu
-        toast.error("Xung đột dữ liệu! Chiến dịch này có thể đã được xử lý.");
+        toast.error("This campaign maybe processed yet.");
       } else {
-        toast.error(err.message || `Lỗi khi xử lý ${action}.`);
+        toast.error(err.message || `Error processing ${action}.`);
       }
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Admin Control Panel</h1>
+    <div className="max-w-7xl mx-auto px-4 py-8 text-brand-cream">
+      <h1 className="text-2xl font-bold text-brand-cream mb-6">Admin Control Panel</h1>
       
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-          <h2 className="font-semibold text-gray-700">Pending Campaigns</h2>
-          <span className="text-xs font-bold bg-brand-warning text-white px-2 py-1 rounded">
+      <div className="bg-brand-card rounded-xl shadow-2xl border border-brand-line overflow-hidden">
+        <div className="px-6 py-4 border-b border-brand-line bg-brand-panel flex justify-between items-center">
+          <h2 className="font-semibold text-brand-cream">Pending Campaigns</h2>
+          <span className="text-xs font-bold bg-brand-warning text-brand-dark px-2 py-1 rounded">
             {campaigns.length} Require Action {/* [BỔ SUNG] Render số lượng động */}
           </span>
         </div>
         
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-white">
+        <table className="min-w-full divide-y divide-brand-line text-sm">
+          <thead className="bg-brand-card">
             <tr>
-              <th className="px-6 py-3 text-left font-semibold text-gray-600">Title</th>
-              <th className="px-6 py-3 text-left font-semibold text-gray-600">Target</th>
-              <th className="px-6 py-3 text-left font-semibold text-gray-600">Date</th>
-              <th className="px-6 py-3 text-right font-semibold text-gray-600">Actions</th>
+              <th className="px-6 py-3 text-left font-semibold text-brand-creamMuted">Title</th>
+              <th className="px-6 py-3 text-left font-semibold text-brand-creamMuted">Target</th>
+              <th className="px-6 py-3 text-left font-semibold text-brand-creamMuted">Date</th>
+              <th className="px-6 py-3 text-right font-semibold text-brand-creamMuted">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-brand-line">
             {/* [BỔ SUNG] Render list động dựa trên UI cũ, vẫn giữ nguyên class HTML */}
             {campaigns.length > 0 ? campaigns.map((camp) => (
-              <tr key={camp.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-900">{camp.title}</td>
-                <td className="px-6 py-4 text-gray-700">{camp.targetAmount}</td>
-                <td className="px-6 py-4 text-gray-500">{new Date(camp.createdAt).toISOString().split('T')[0]}</td>
+              <tr key={camp.id} className="hover:bg-brand-panel/70">
+                <td className="px-6 py-4 font-medium text-brand-cream">{camp.title}</td>
+                <td className="px-6 py-4 text-brand-creamMuted">{camp.targetAmount}</td>
+                <td className="px-6 py-4 text-brand-creamMuted">{new Date(camp.createdAt).toISOString().split('T')[0]}</td>
                 <td className="px-6 py-4 text-right space-x-3">
                   {/* [BỔ SUNG] Gắn hàm click */}
                   <button onClick={() => handleAction(camp.id, 'approve')} className="text-green-600 font-semibold hover:text-green-800">Approve</button>
@@ -79,7 +79,7 @@ export default function AdminPanel() {
               </tr>
             )) : (
               <tr>
-                <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                <td colSpan="4" className="px-6 py-8 text-center text-brand-creamMuted">
                   No pending campaigns.
                 </td>
               </tr>

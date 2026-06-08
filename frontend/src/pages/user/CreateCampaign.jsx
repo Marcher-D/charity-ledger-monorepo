@@ -36,9 +36,9 @@ export default function CreateCampaign() {
       // [NÂNG CẤP]: Tận dụng data trả về để báo cáo chi tiết cho người dùng
       toast.success(
         <div>
-          <p className="font-bold">Đã tạo: {data.title}</p>
-          <p className="text-sm">Trạng thái: {data.status}</p>
-          <p className="text-xs text-gray-500 mt-1">Mã ID: {data.id.substring(0, 8)}...</p>
+          <p className="font-bold">Created: {data.title}</p>
+          <p className="text-sm">Status: {data.status}</p>
+          <p className="text-xs text-brand-creamMuted mt-1">ID: {data.id.substring(0, 8)}...</p>
         </div>,
         { duration: 5000 } // Hiển thị thông báo trong 5 giây
       );
@@ -47,7 +47,7 @@ export default function CreateCampaign() {
       navigate('/dashboard'); 
 
     } catch (err) {
-      toast.error(err.message || 'Lỗi khi tạo chiến dịch!');
+      toast.error(err.message || 'Campaign creation error!');
       if (err.data && err.data.validation) {
         setErrors(err.data.validation);
       }
@@ -57,57 +57,57 @@ export default function CreateCampaign() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Campaign</h1>
-      <p className="text-gray-500 mb-8">Submit a new charity campaign. It will be reviewed by administrators before being recorded on the ledger.</p>
+    <div className="max-w-3xl mx-auto px-4 py-12 text-brand-cream">
+      <h1 className="text-3xl font-bold text-brand-cream mb-2">Create Campaign</h1>
+      <p className="font-copy text-brand-creamMuted mb-8">Submit a new charity campaign. It will be reviewed by administrators before being recorded on the ledger.</p>
 
-      <form className="bg-emerald-600 p-8 rounded-xl shadow-sm border border-gray-100 space-y-6" onSubmit={handleSubmit}>
+      <form className="bg-brand-card p-8 rounded-xl shadow-2xl border border-brand-line space-y-6" onSubmit={handleSubmit}>
         
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Campaign Title</label>
+          <label className="block text-sm font-bold text-brand-creamMuted mb-1">Campaign Title</label>
           <input 
             type="text" 
             placeholder="e.g., Clean Water Fund" 
             value={formData.title} 
             onChange={(e) => setFormData({...formData, title: e.target.value})}
-            className={`w-full px-4 py-2 border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-brand-success outline-none`} 
+            className={`w-full px-4 py-2 bg-brand-dark/60 text-brand-cream border ${errors.title ? 'border-red-500' : 'border-brand-line'} rounded-md focus:ring-2 focus:ring-brand-success outline-none`} 
           />
           {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
         </div>
         
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Target Amount (TCL)</label>
+          <label className="block text-sm font-bold text-brand-creamMuted mb-1">Target Amount (TCL)</label>
           <input 
             type="number" 
             step="0.01" 
             placeholder="5000.00" 
             value={formData.targetAmount}
             onChange={(e) => setFormData({...formData, targetAmount: e.target.value})}
-            className={`w-full px-4 py-2 border ${errors.targetAmount ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-brand-success outline-none`} 
+            className={`w-full px-4 py-2 bg-brand-dark/60 text-brand-cream border ${errors.targetAmount ? 'border-red-500' : 'border-brand-line'} rounded-md focus:ring-2 focus:ring-brand-success outline-none`} 
           />
           {errors.targetAmount && <p className="text-red-500 text-xs mt-1">{errors.targetAmount}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Cover Image URL</label>
+          <label className="block text-sm font-bold text-brand-creamMuted mb-1">Cover Image URL</label>
           <input 
             type="text" 
             placeholder="https://example.com/image.jpg" 
             value={formData.coverImageUrl}
             onChange={(e) => setFormData({...formData, coverImageUrl: e.target.value})}
-            className={`w-full px-4 py-2 border ${errors.coverImageUrl ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-brand-success outline-none`} 
+            className={`w-full px-4 py-2 bg-brand-dark/60 text-brand-cream border ${errors.coverImageUrl ? 'border-red-500' : 'border-brand-line'} rounded-md focus:ring-2 focus:ring-brand-success outline-none`} 
           />
           {errors.coverImageUrl && <p className="text-red-500 text-xs mt-1">{errors.coverImageUrl}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
+          <label className="block text-sm font-bold text-brand-creamMuted mb-1">Description</label>
           <textarea 
             rows="4" 
             placeholder="Detail the purpose of your campaign..." 
             value={formData.description}
             onChange={(e) => setFormData({...formData, description: e.target.value})}
-            className={`w-full px-4 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-brand-success outline-none`}
+            className={`w-full px-4 py-2 bg-brand-dark/60 text-brand-cream font-copy border ${errors.description ? 'border-red-500' : 'border-brand-line'} rounded-md focus:ring-2 focus:ring-brand-success outline-none`}
           ></textarea>
           {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
         </div>
@@ -115,7 +115,7 @@ export default function CreateCampaign() {
         <button 
           type="submit" 
           disabled={isSubmitting}
-          className={`w-full py-3 text-white font-bold rounded-md transition-colors ${isSubmitting ? 'bg-gray-400 cursor-not-allowed border border-gray-400 p-4 rounded-md' : 'bg-brand-primary hover:bg-brand-accent border border-gray-400 p-4 rounded-md'}`}
+          className={`w-full py-3 font-bold rounded-md transition-colors ${isSubmitting ? 'bg-brand-panel text-brand-creamMuted cursor-not-allowed border border-brand-line p-4 rounded-md' : 'bg-brand-success text-brand-dark hover:bg-brand-accent border border-brand-success/60 p-4 rounded-md'}`}
         >
           {isSubmitting ? 'Submitting...' : 'Submit for Approval'}
         </button>
