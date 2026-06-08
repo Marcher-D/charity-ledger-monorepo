@@ -7,21 +7,21 @@ export default function TransactionHistory({ transactions = [] }) {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full mt-6">
-      <h3 className="text-lg font-bold text-slate-200 mb-4">Lịch sử giao dịch</h3>
+    <div className="bg-brand-card border border-brand-line p-6 rounded-2xl w-full mt-6">
+      <h3 className="text-lg font-bold text-brand-cream mb-4">Transaction History</h3>
       
       {transactions.length === 0 ? (
-        <p className="text-sm text-slate-400">Chưa có giao dịch nào.</p>
+        <p className="text-sm text-brand-creamMuted">No transactions have been made.</p>
       ) : (
         <div className="space-y-3">
           {transactions.map((tx) => (
-            <div key={tx.id} className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl">
+            <div key={tx.id} className="flex items-center justify-between p-3 bg-brand-dark border border-brand-line rounded-xl">
               <div>
-                <p className="text-sm font-bold text-slate-200">{tx.type} <span className="text-slate-500 font-normal ml-2">{new Date(tx.createdAt).toLocaleDateString()}</span></p>
-                {tx.txHash && <p className="text-xs text-slate-500 mt-1">Hash: {tx.txHash.substring(0, 10)}...</p>}
+                <p className="text-sm font-bold text-brand-cream">{tx.type} <span className="text-brand-creamMuted font-normal ml-2">{new Date(tx.createdAt).toLocaleDateString()}</span></p>
+                {tx.txHash && <p className="text-xs text-brand-creamMuted mt-1">Hash: {tx.txHash.substring(0, 10)}...</p>}
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold text-slate-200 mb-1">${tx.amount.toFixed(2)}</p>
+                <p className="text-sm font-bold text-brand-cream mb-1">${tx.amount.toFixed(2)}</p>
                 <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${getStatusColor(tx.status)}`}>
                   {tx.status}
                 </span>

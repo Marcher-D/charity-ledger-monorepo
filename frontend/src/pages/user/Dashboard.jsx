@@ -16,6 +16,8 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
+  const [isStaking, setIsStaking] = useState(false);
+  const [isUnstaking, setIsUnstaking] = useState(false);
 
   const fetchDashboardData = async () => {
     try {
@@ -26,8 +28,8 @@ export default function Dashboard() {
       setProfile(profileData);
       setTransactions(Array.isArray(txData) ? txData : txData.items || []); 
     } catch (err) {
-      console.error("Lỗi tải Dashboard:", err);
-      toast.error("Không thể tải dữ liệu ví!");
+      console.error("Dashboard error:", err);
+      toast.error("Cannot load wallet data!");
     } finally {
       setIsLoading(false);
     }
@@ -45,7 +47,7 @@ export default function Dashboard() {
           return; // [QUAN TRỌNG] Thoát luôn hàm, chặn đứng không cho gọi fetchDashboardData() bên dưới
         }
       } catch (error) {
-        console.error("Lỗi giải mã token tại Dashboard:", error);
+        console.error("Token decryption error (at Dasboard):", error);
       }
     }
 
@@ -54,6 +56,61 @@ export default function Dashboard() {
   }, [navigate]);
 
   // Hàm chuyển đổi quyền Validator
+  const parseAmount = (amount) => {
+    const numericAmount = Number(amount);
+    return Number.isFinite(numericAmount) ? numericAmount : 0;
+  };
+
+  const handleStake = async (amount) => {
+    const numericAmount = parseAmount(amount);
+    if (numericAmount <= 0) {
+      toast.error("Enter a valid stake amount");
+      return false;
+    }
+
+    setIsStaking(true);
+    try {
+      const result = await apiRequest('/api/v1/transactions/stake', {
+        method: 'POST',
+        body: JSON.stringify({ amount: numericAmount })
+      });
+
+      toast.success(result?.message || "Stake request submitted");
+      await fetchDashboardData();
+      return true;
+    } catch (err) {
+      toast.error(err.message || "Stake request failed");
+      return false;
+    } finally {
+      setIsStaking(false);
+    }
+  };
+
+  const handleUnstake = async (amount) => {
+    const numericAmount = parseAmount(amount);
+    if (numericAmount <= 0) {
+      toast.error("Enter a valid unstake amount");
+      return false;
+    }
+
+    setIsUnstaking(true);
+    try {
+      const result = await apiRequest('/api/v1/transactions/unstake', {
+        method: 'POST',
+        body: JSON.stringify({ amount: numericAmount })
+      });
+
+      toast.success(result?.message || "Unstake request submitted");
+      await fetchDashboardData();
+      return true;
+    } catch (err) {
+      toast.error(err.message || "Unstake request failed");
+      return false;
+    } finally {
+      setIsUnstaking(false);
+    }
+  };
+
   const handleToggleValidator = async () => {
     setIsToggling(true);
     try {
@@ -64,10 +121,10 @@ export default function Dashboard() {
         body: JSON.stringify({ action: currentAction }) 
       });
       
-      toast.success(profile.activeValidator ? "Đã tắt Node Validator" : "Đã kích hoạt Node Validator PPoS!");
+      toast.success(profile.activeValidator ? "Has turned off Node Validator" : "Has activated Node Validator PPoS!");
       fetchDashboardData(); 
     } catch (err) {
-      toast.error(err.message || "Lỗi chuyển đổi Validator");
+      toast.error(err.message || "Validator status switching error");
     } finally {
       setIsToggling(false);
     }
@@ -83,12 +140,16 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold text-slate-200 mb-8">My Dashboard</h1>
+      <h1 className="text-3xl font-bold text-brand-cream mb-8">My Dashboard</h1>
       
       <WalletPanel 
         profile={profile} 
         isToggling={isToggling} 
         onToggleValidator={handleToggleValidator} 
+        isStaking={isStaking}
+        isUnstaking={isUnstaking}
+        onStake={handleStake}
+        onUnstake={handleUnstake}
       />
       
       <TransactionHistory transactions={transactions} />

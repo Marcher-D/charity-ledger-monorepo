@@ -36,13 +36,13 @@ export default function DonateModal({ availableBalance = 0, campaignId, onDonate
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-sm shadow-xl">
+    <div className="bg-brand-panel border border-brand-line p-6 rounded-2xl w-full max-w-sm shadow-xl">
       <h3 className="text-emerald-400 font-bold mb-4 flex items-center gap-2">
-        <span>♥</span> Quyên góp
+        <span>♥</span> DONATE
       </h3>
       
-      <div className="mb-4 text-sm text-slate-400 flex justify-between">
-        <span>Khả dụng:</span>
+      <div className="mb-4 text-sm text-brand-creamMuted flex justify-between">
+        <span>Available:</span>
         <span className="text-emerald-400 font-bold">${numericAvailableBalance.toFixed(2)}</span>
       </div>
 
@@ -56,8 +56,8 @@ export default function DonateModal({ availableBalance = 0, campaignId, onDonate
             max={numericAvailableBalance}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="Nhập số tiền (VD: 10.50)" 
-            className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl outline-none focus:border-emerald-500 transition text-sm text-slate-200"
+            placeholder="Choose an amount (E.G: 10.50)" 
+            className="w-full bg-brand-dark border border-brand-line p-3 rounded-xl outline-none focus:border-emerald-500 transition text-sm text-brand-cream"
             required
           />
         </div>
@@ -68,17 +68,17 @@ export default function DonateModal({ availableBalance = 0, campaignId, onDonate
             type="text" 
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Lời nhắn ủng hộ (Tùy chọn)..." 
-            className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl outline-none focus:border-emerald-500 transition text-sm text-slate-200"
+            placeholder="Give some note (Optional)..." 
+            className="w-full bg-brand-dark border border-brand-line p-3 rounded-xl outline-none focus:border-emerald-500 transition text-sm text-brand-cream font-copy"
           />
         </div>
 
         <button 
           type="submit"
           disabled={isSubmitting || !amount || parseFloat(amount) > numericAvailableBalance}
-          className="w-full bg-emerald-500 text-slate-950 font-bold py-3 rounded-xl hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-brand-success text-brand-dark font-bold py-3 rounded-xl hover:bg-brand-accent transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN CHUYỂN'}
+          {isSubmitting ? 'PROCESSING...' : 'CONFIRM TO SEND'}
         </button>
       </form>
     </div>

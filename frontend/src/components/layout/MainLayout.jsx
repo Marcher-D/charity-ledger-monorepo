@@ -4,7 +4,7 @@ import Navbar from './Navbar'; // Tùy đường dẫn của ông anh
 // [BỔ SUNG] Nhận Props từ App.jsx
 export default function MainLayout({ isLoggedIn, onLogout, authVersion }) {
   return (
-    <div className="min-h-screen flex flex-col bg-brand-surface">
+    <div className="min-h-screen flex flex-col bg-brand-dark text-brand-cream">
       {/* [BỔ SUNG] Truyền Props tiếp cho Navbar */}
       <Navbar isLoggedIn={isLoggedIn} onLogout={onLogout} authVersion={authVersion} />
       
@@ -13,7 +13,7 @@ export default function MainLayout({ isLoggedIn, onLogout, authVersion }) {
         <Outlet />
       </main>
       
-      <footer className="bg-brand-dark text-gray-400 py-6 text-center text-sm mt-auto">
+      <footer className="bg-brand-dark text-brand-creamMuted py-6 text-center text-sm mt-auto">
         <p>© 2026 Transparent Charity Ledger. Secured by PPoS Consensus.</p>
       </footer>
     </div>

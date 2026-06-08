@@ -31,7 +31,7 @@ const ProtectedRoute = ({ isLoggedIn, requireAdmin, children }) => {
       const decoded = jwtDecode(token);
       userRole = decoded.role; // Lấy role thật từ Token ra để đối chiếu
     } catch (err) {
-      console.error("Lỗi đọc token bảo mật:", err);
+      console.error("Token reading error:", err);
       return <Navigate to="/login" replace />;
     }
   }
@@ -41,7 +41,7 @@ const ProtectedRoute = ({ isLoggedIn, requireAdmin, children }) => {
   // 2. TÌNH HUỐNG 1: Tuyến đường yêu cầu ADMIN, nhưng người vào không phải Admin
   if (requireAdmin) {
     if (!isAdmin) {
-      toast.error("Khu vực cấm! Chỉ dành cho Quản trị viên.");
+      toast.error("Prohibited area! Admin only.");
       return <Navigate to="/" replace />; // Đá về Trang chủ
     }
   } 
