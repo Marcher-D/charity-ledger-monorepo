@@ -24,10 +24,12 @@ public class RabbitConfig {
     // ─── Mempool side (backend → blockchain) ─────────────────────────────────
 
     @Bean
-    // Durable queue: survives RabbitMQ restart. Backend publishes signed transactions here.
+    // Quorum queue: uses Raft consensus to replicate messages across cluster nodes.
+    // Survives RabbitMQ node failure without losing transactions — critical for a
+    // blockchain mempool where every transaction must be processed exactly once.
     // Blockchain nodes (on-chain-core) consume from here via TransactionBuffer.
     Queue mempoolQueue(RabbitQueueProperties properties) {
-        return QueueBuilder.durable(properties.mempoolQueue()).build();
+        return QueueBuilder.durable(properties.mempoolQueue()).quorum().build();
     }
 
     @Bean
@@ -48,10 +50,12 @@ public class RabbitConfig {
     // ─── Event Bus side (blockchain → backend) ────────────────────────────────
 
     @Bean
-    // Durable queue: survives RabbitMQ restart. Blockchain nodes publish results here.
+    // Quorum queue: uses Raft consensus to replicate messages across cluster nodes.
+    // Ensures on-chain results (block confirmations, finalized transactions) are
+    // never lost even during a RabbitMQ node crash.
     // Backend (OnChainEventListener) consumes from here to update PostgreSQL.
     Queue eventBusQueue(RabbitQueueProperties properties) {
-        return QueueBuilder.durable(properties.eventBusQueue()).build();
+        return QueueBuilder.durable(properties.eventBusQueue()).quorum().build();
     }
 
     @Bean
