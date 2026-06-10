@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Spring Boot parent gives us sensible default versions for most Spring dependencies.
+        Because of this parent, we do not need to manually write versions for Spring Web,
+        Spring Security, Spring Data JPA, Flyway, PostgreSQL, etc.
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.6</version>
+        <relativePath/>
+    </parent>
+
+    <!--
+        Project identity.
+        groupId: usually the organization or package namespace.
+        artifactId: the built module name.
+        version: SNAPSHOT means this is still under development, not a final release.
+    -->
+    <groupId>com.tcl</groupId>
+    <artifactId>backend-api</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>Transparent Charity Ledger Backend API</name>
+    <description>Spring Boot off-chain backend for Transparent Charity Ledger</description>
+
+    <!--
+        Central version settings.
+        Java is fixed to 21 because the project plan uses Java 21.
+        jjwt and testcontainers are not managed by our Spring Boot parent in the exact
+        way we want, so their versions are stored here and reused below.
+    -->
+    <properties>
+        <java.version>21</java.version>
+        <jjwt.version>0.12.6</jjwt.version>
+        <testcontainers.version>1.20.4</testcontainers.version>
+    </properties>
+
+    <dependencies>
+        <!-- RabbitMQ support. Used by RabbitMempoolPublisher and OnChainEventListener. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- JPA/Hibernate support. Used by repositories and entity classes for PostgreSQL access. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Spring Security support. Used for JWT authentication and role-based route protection. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Request validation support. Enables annotations like @NotBlank, @Email, and @DecimalMin. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- REST API support. Provides controllers, JSON request/response handling, and embedded Tomcat. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Flyway migration engine. Runs SQL migrations from src/main/resources/db/migration. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <!-- Flyway database-specific PostgreSQL support. Required by newer Flyway versions. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- JWT API used directly by our JwtService at compile time. -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+
+        <!-- JWT runtime implementation. Scope runtime means code compiles against jjwt-api only. -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- JWT JSON serialization support through Jackson. Also only needed at runtime. -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- PostgreSQL JDBC driver. Runtime only because application code does not import driver classes. -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Ed25519 signing for system-key (DEPOSIT) transactions.
+             Same library and version family as the on-chain core so the
+             signature/key derivation behaves identically. -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.78.1</version>
+        </dependency>
+
+        <!-- Main test toolkit: JUnit, AssertJ, Mockito, Spring test helpers, and MockMvc support. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Test helpers for Spring Security, useful for controller/security tests. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- PostgreSQL Testcontainers support for future repository/integration tests. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- Build configuration. -->
+    <build>
+        <plugins>
+            <!--
+                Spring Boot Maven plugin packages the app as an executable jar.
+                After packaging, the app can run with:
+                java -jar target/backend-api-0.0.1-SNAPSHOT.jar
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

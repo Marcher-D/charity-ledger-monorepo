@@ -1,0 +1,177 @@
+services:
+
+  # ── INFRASTRUCTURE ───────────────────────────────────────────────────────────
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: charity_mq
+    ports:
+      - "5672:5672"     # AMQP port for services to connect
+      - "15672:15672"   # Management UI at http://localhost:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    networks:
+      - charity_net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: charity_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: charity_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - charity_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d charity_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── ON-CHAIN SERVICES (Khoa + Khang) ──────────────────────────────────────────
+
+  # Mock mempool: consumes signed transactions from RabbitMQ mempool_queue and
+  # serves them to blockchain nodes over HTTP (GET /api/mempool/batch).
+  mempool:
+    build:
+      context: ./charity-ledger-monorepo-feature_branch
+      dockerfile: Dockerfile.mempool
+    container_name: charity_mempool
+    ports:
+      - "8081:8080"   # debugging only; nodes reach it internally at mempool:8080
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=admin
+      - RABBITMQ_PASSWORD=admin
+      - MEMPOOL_QUEUE=mempool_queue
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - charity_net
+
+  # Build-only service: produces the blockchain node image the orchestrator
+  # spawns via `docker run`. Build it with: docker compose --profile build build
+  # It never runs as part of `docker compose up`.
+  node-image:
+    profiles: ["build"]
+    image: charity-node:latest
+    build:
+      context: ./charity-ledger-monorepo-feature_branch
+      dockerfile: Dockerfile.node
+    entrypoint: ["true"]
+    networks:
+      - charity_net
+
+  # NodeOrchestrator: spawns one node container per user/campaign (and the 5
+  # genesis validators at backend startup) through the mounted Docker socket.
+  # Node containers join charity_net with their own IP and hostname node-<idx>.
+  orchestrator:
+    build:
+      context: ./charity-ledger-monorepo-feature_branch
+      dockerfile: Dockerfile.orchestrator
+    container_name: charity_orchestrator
+    ports:
+      # Host 7000 is taken by macOS AirPlay; inside the Docker network the
+      # orchestrator still listens on 7000 (backend uses http://orchestrator:7000).
+      - "7001:7000"
+    environment:
+      - ORCHESTRATOR_PORT=7000
+      - NODE_LAUNCH_MODE=docker
+      - NODE_IMAGE=charity-node:latest
+      - DOCKER_NETWORK=charity_net
+      - NODES_DATA_VOLUME=nodes_data
+      - NODES_DIR=/app/nodes
+      # Peer-list size baked into every spawned node (max node count for full
+      # P2P connectivity). Raise it for bigger networks; the chain only ever
+      # funds/stakes the FIRST FIVE identities (the genesis validators).
+      - TOTAL_NODES=50
+      # Passed to every node: where to poll transactions and publish events.
+      - MEMPOOL_API_URL=http://mempool:8080
+      - EVENT_BUS_URL=amqp://admin:admin@rabbitmq:5672
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - nodes_data:/app/nodes
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mempool:
+        condition: service_started
+    networks:
+      - charity_net
+
+  # ── APPLICATION SERVICES ──────────────────────────────────────────────────────
+
+  backend-api:
+    build:
+      context: ./backend-api   # Billy's Spring Boot project (has its own Dockerfile)
+    container_name: charity_backend
+    ports:
+      - "8080:8080"
+    environment:
+      # Spring Boot reads SPRING_RABBITMQ_HOST → spring.rabbitmq.host
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=admin
+      - SPRING_RABBITMQ_PASSWORD=admin
+      # PostgreSQL connection
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/charity_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=secretpassword
+      # RabbitMQ queue/exchange names (must match what blockchain nodes use)
+      - APP_RABBITMQ_MEMPOOL_EXCHANGE=mempool_exchange
+      - APP_RABBITMQ_MEMPOOL_QUEUE=mempool_queue
+      - APP_RABBITMQ_EVENT_BUS_EXCHANGE=event_bus_exchange
+      - APP_RABBITMQ_EVENT_BUS_QUEUE=event_bus_queue
+      # On-chain integration: orchestrator + per-node signing services
+      - APP_ONCHAIN_ORCHESTRATOR_BASE_URL=http://orchestrator:7000
+      - APP_ONCHAIN_NODE_HOST_PATTERN=node-%d
+      - APP_ONCHAIN_SIGNER_PORT=7100
+      - APP_ONCHAIN_GENESIS_NODE_COUNT=5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started   # backend retries genesis bootstrap itself
+    networks:
+      - charity_net
+
+  frontend:
+    build:
+      context: ./frontend   # Marcher-D's React/Vite project (Dockerfile added)
+    container_name: charity_frontend
+    ports:
+      - "3000:80"   # host:3000 → nginx inside:80
+    depends_on:
+      - backend-api
+    networks:
+      - charity_net
+
+# ── PERSISTENT STORAGE ────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  # Fixed name: the orchestrator mounts this same volume into every node
+  # container it spawns (docker run -v nodes_data:/app/nodes ...), so the name
+  # must not be prefixed with the compose project name.
+  nodes_data:
+    name: nodes_data
+
+# ── INTERNAL NETWORK ──────────────────────────────────────────────────────────
+networks:
+  charity_net:
+    driver: bridge
+    # Fixed name: orchestrator-spawned node containers join this network by name.
+    name: charity_net

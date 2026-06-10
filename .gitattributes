@@ -1,0 +1,14 @@
+# Normalize line endings. Critical for Windows collaborators:
+# shell scripts baked into Docker images (e.g. the node container entrypoint)
+# break with CRLF endings ("/bin/sh^M: bad interpreter").
+* text=auto
+*.sh text eol=lf
+*.py text eol=lf
+Dockerfile* text eol=lf
+*.yml text eol=lf
+/mvnw text eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary

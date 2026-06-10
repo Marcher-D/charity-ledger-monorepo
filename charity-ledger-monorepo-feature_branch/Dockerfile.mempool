@@ -1,0 +1,9 @@
+# Mock mempool image: HTTP transaction buffer polled by blockchain nodes,
+# fed one-way from the backend through the RabbitMQ "mempool_queue".
+
+FROM python:3.12-alpine
+RUN pip install --no-cache-dir pika
+WORKDIR /app
+COPY test/mock_mempool.py mock_mempool.py
+EXPOSE 8080
+CMD ["python", "-u", "mock_mempool.py"]

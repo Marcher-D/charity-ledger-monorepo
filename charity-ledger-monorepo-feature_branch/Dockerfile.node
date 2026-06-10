@@ -1,0 +1,20 @@
+# Blockchain node image: runs app.Main (consensus node) + network.NodeSignerService
+# (per-node signing endpoint on :7100) in one container. One container per node,
+# each with its own IP; spawned dynamically by the NodeOrchestrator via `docker run`.
+#
+# Container args: <nodeIndex> <totalNodes> <mempoolApiUrl> <eventBusUrl>
+
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+WORKDIR /build
+COPY pom.xml .
+COPY src ./src
+RUN mvn -q -DskipTests package
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /build/target/blockchain.jar blockchain.jar
+COPY docker/node-entrypoint.sh /app/node-entrypoint.sh
+RUN chmod +x /app/node-entrypoint.sh && mkdir -p /app/nodes
+# 9000+idx = P2P (per-node), 7100 = signing service
+EXPOSE 7100
+ENTRYPOINT ["/app/node-entrypoint.sh"]

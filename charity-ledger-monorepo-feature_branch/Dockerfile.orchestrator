@@ -1,0 +1,20 @@
+# NodeOrchestrator image: HTTP server that spawns blockchain node containers
+# on demand (`docker run` against the host's Docker daemon via the mounted
+# /var/run/docker.sock). Configuration via env — see NodeOrchestrator.java.
+
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+WORKDIR /build
+COPY pom.xml .
+COPY src ./src
+RUN mvn -q -DskipTests package
+
+FROM eclipse-temurin:21-jre
+# docker CLI to spawn sibling node containers through the mounted socket
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends docker.io curl \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build /build/target/blockchain.jar blockchain.jar
+RUN mkdir -p /app/nodes
+EXPOSE 7000
+ENTRYPOINT ["java", "-cp", "blockchain.jar", "network.NodeOrchestrator"]
