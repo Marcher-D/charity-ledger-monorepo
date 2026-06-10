@@ -46,14 +46,27 @@ public class EventGateway {
 
     public void setEventBusUrl(String url) {
         this.eventBusUrl = url;
+        connect();
+    }
+
+    /**
+     * (Re)establishes the RabbitMQ connection. Called lazily from sendEvent as
+     * well: a one-shot connect at boot silently dropped every event for the
+     * node's whole lifetime whenever the broker was not ready yet (e.g. all
+     * containers starting together after a stack restart).
+     */
+    private synchronized void connect() {
+        if (eventBusUrl == null) return;
         try {
             ConnectionFactory factory = new ConnectionFactory();
-            factory.setUri(url);
+            factory.setUri(eventBusUrl);
             connection = factory.newConnection();
             channel = connection.createChannel();
             channel.queueDeclare(queueName, true, false, false, null);
-            System.out.println("[EventGateway] Connected to RabbitMQ at " + url);
+            System.out.println("[EventGateway] Connected to RabbitMQ at " + eventBusUrl);
         } catch (Exception e) {
+            connection = null;
+            channel = null;
             System.err.println("[EventGateway] Failed to connect to RabbitMQ: " + e.getMessage());
         }
     }
@@ -142,6 +155,10 @@ public class EventGateway {
     }
 
     private void sendEvent(String eventType, JsonObject payloadData, String txId) {
+        // Reconnect lazily if the boot-time connection failed or was dropped.
+        if (channel == null || !channel.isOpen()) {
+            connect();
+        }
         if (channel == null) {
             System.err.println("[EventGateway] Cannot send event - RabbitMQ channel not configured.");
             return;

@@ -2,6 +2,7 @@ package com.tcl.backend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /*
  * Main entry point of the backend API.
@@ -12,6 +13,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * - start the embedded web server
  */
 @SpringBootApplication
+// Enables @Scheduled jobs (PendingTransactionExpiryJob's orphan sweep).
+@EnableScheduling
 public class BackendApiApplication {
 
     public static void main(String[] args) {

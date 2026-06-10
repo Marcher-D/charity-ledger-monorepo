@@ -20,6 +20,10 @@ public interface TransactionCacheRepository extends JpaRepository<TransactionCac
     // Find one transaction by txHash. Optional because a hash may not exist.
     Optional<TransactionCache> findByTxHash(String txHash);
 
+    // Orphan sweep for PendingTransactionExpiryJob: PENDING rows older than the
+    // cutoff whose on-chain outcome will never arrive (lost in-flight message).
+    List<TransactionCache> findByStatusAndCreatedAtBefore(TransactionStatus status, java.time.Instant cutoff);
+
     // Custom JPQL query for GET /api/v1/campaigns/{id}/donors.
     // It selects only the fields needed by DonorSummary instead of full TransactionCache entities.
     @Query("""

@@ -51,7 +51,7 @@ Then open **http://localhost:3000**.
    signed by *your own node*, goes through the RabbitMQ mempool, gets finalized
    by BFT consensus, and the proposer earns 2% of donations as a reward.
 
-## Stop
+## Stop / Restart
 
 ```bash
 # Node containers are spawned by the orchestrator, NOT by compose — remove them too:
@@ -59,8 +59,15 @@ docker rm -f $(docker ps -aq --filter "name=node-")
 docker compose down
 ```
 
-Data survives in the `postgres_data` and `nodes_data` volumes; the next
-`docker compose up -d` resumes where you left off.
+**Restarting is safe**: accounts, campaigns and balances live in PostgreSQL and
+survive. The blockchain itself starts **fresh at round 0 on every boot**
+(`CHAIN_RESET_ON_START=true`) — the consensus core only reliably supports
+nodes that boot together, so resuming a half-killed chain is not attempted.
+On startup the orchestrator respawns one container per known node, and the
+backend detects the new "chain epoch" and **replays every user's balance onto
+the fresh chain** (system deposits + re-stakes), so the web mirror and the
+chain stay consistent. Transactions that were in flight during a shutdown are
+automatically failed and refunded after 15 minutes.
 
 **Full reset (fresh chain + empty database):**
 

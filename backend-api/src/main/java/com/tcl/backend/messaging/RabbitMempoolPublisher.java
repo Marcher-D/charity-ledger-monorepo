@@ -97,6 +97,11 @@ public class RabbitMempoolPublisher implements MempoolPublisher {
         send(transaction, message);
     }
 
+    @Override
+    public void publishPrebuilt(OnChainTransactionMessage message) {
+        rabbitTemplate.convertAndSend(properties.mempoolExchange(), properties.mempoolQueue(), message);
+    }
+
     private void send(TransactionCache transaction, OnChainTransactionMessage message) {
         /*
          * The on-chain txId is the correlation key: TXN_VALIDATED/TXN_REJECTED

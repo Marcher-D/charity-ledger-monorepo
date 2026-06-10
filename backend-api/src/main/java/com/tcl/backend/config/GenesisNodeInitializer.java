@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /*
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Component;
  * so the first spawn call is retried with a backoff instead of failing startup.
  */
 @Component
+@Order(1) // before ChainStateReconciler: it needs the orchestrator up and validators spawned
 public class GenesisNodeInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(GenesisNodeInitializer.class);

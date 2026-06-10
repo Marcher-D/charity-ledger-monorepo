@@ -88,6 +88,11 @@ services:
       - "7001:7000"
     environment:
       - ORCHESTRATOR_PORT=7000
+      # Start the chain fresh on every boot: the consensus core only reliably
+      # supports nodes that start together at round 0 (a chain killed mid-round
+      # deadlocks on resume). The backend detects the epoch bump and replays
+      # user balances onto the fresh chain, so web accounts survive restarts.
+      - CHAIN_RESET_ON_START=true
       - NODE_LAUNCH_MODE=docker
       - NODE_IMAGE=charity-node:latest
       - DOCKER_NETWORK=charity_net

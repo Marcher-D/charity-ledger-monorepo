@@ -43,10 +43,28 @@ import java.util.concurrent.atomic.AtomicInteger;
  * The next node index is persisted to <NODES_DIR>/orchestrator_next_index so an
  * orchestrator restart never re-assigns an index that is already bound to a
  * user account in the off-chain database.
+ *
+ * On startup the orchestrator RESPAWNS every node it has ever assigned
+ * (indexes 0..nextNodeIndex-1). Node containers are ephemeral — a stack
+ * shutdown removes them — but their identities live in the off-chain database
+ * and their chain state lives on the nodes volume, so without this respawn a
+ * restarted system would have registered users whose nodes no longer exist
+ * (no consensus, no signing — every transaction would hang or fail).
  */
 public class NodeOrchestrator {
 
     private static final AtomicInteger nextNodeIndex = new AtomicInteger(0);
+    // Incremented on every CHAIN_RESET_ON_START wipe; exposed via /health so the
+    // backend knows when to replay balances onto a fresh chain.
+    private static final java.util.concurrent.atomic.AtomicLong chainEpoch =
+            new java.util.concurrent.atomic.AtomicLong(0);
+
+    /** Immutable launch configuration read from the environment once at startup. */
+    private record Config(
+            int totalNodes, String mempoolApiUrl, String eventBusUrl,
+            String launchMode, String nodeImage, String dockerNetwork, String nodesVolume) {
+        boolean dockerMode() { return "docker".equalsIgnoreCase(launchMode); }
+    }
 
     private static String env(String key, String def) {
         String v = System.getenv(key);
@@ -54,19 +72,55 @@ public class NodeOrchestrator {
     }
 
     public static void main(String[] args) throws IOException {
-        int    port          = Integer.parseInt(env("ORCHESTRATOR_PORT", "9000"));
-        int    totalNodes    = Integer.parseInt(env("TOTAL_NODES", "10"));
-        String mempoolApiUrl = env("MEMPOOL_API_URL", "http://localhost:8080");
-        String eventBusUrl   = env("EVENT_BUS_URL", "amqp://localhost:5672");
-        String launchMode    = env("NODE_LAUNCH_MODE", "process");
-        String nodeImage     = env("NODE_IMAGE", "charity-node:latest");
-        String dockerNetwork = env("DOCKER_NETWORK", "charity_net");
-        String nodesVolume   = env("NODES_DATA_VOLUME", "nodes_data");
-        Path   nodesDir      = Path.of(env("NODES_DIR", "nodes"));
-        Path   indexFile     = nodesDir.resolve("orchestrator_next_index");
+        int  port      = Integer.parseInt(env("ORCHESTRATOR_PORT", "9000"));
+        Path nodesDir  = Path.of(env("NODES_DIR", "nodes"));
+        Path indexFile = nodesDir.resolve("orchestrator_next_index");
+        Path epochFile = nodesDir.resolve("chain_epoch");
+        boolean resetChainOnStart = Boolean.parseBoolean(env("CHAIN_RESET_ON_START", "false"));
+
+        Config config = new Config(
+                Integer.parseInt(env("TOTAL_NODES", "10")),
+                env("MEMPOOL_API_URL", "http://localhost:8080"),
+                env("EVENT_BUS_URL", "amqp://localhost:5672"),
+                env("NODE_LAUNCH_MODE", "process"),
+                env("NODE_IMAGE", "charity-node:latest"),
+                env("DOCKER_NETWORK", "charity_net"),
+                env("NODES_DATA_VOLUME", "nodes_data")
+        );
 
         Files.createDirectories(nodesDir);
         nextNodeIndex.set(loadPersistedIndex(indexFile));
+
+        /*
+         * CHAIN_RESET_ON_START: wipe all node chain databases so every node
+         * boots together at round 0 — the only restart path the consensus
+         * implementation reliably supports. Resuming a chain that was killed
+         * mid-round deadlocks: panicked validators block in Recovery Mode
+         * waiting for a certificate that the remaining stake (<68%) can never
+         * produce. The chain_epoch counter tells the off-chain backend that a
+         * reset happened so it can replay user balances onto the fresh chain.
+         * Node identities are deterministic, so identities/addresses survive.
+         */
+        if (resetChainOnStart) {
+            int wiped = wipeChainState(nodesDir);
+            long epoch = bumpEpoch(epochFile);
+            System.out.println("[Orchestrator] CHAIN_RESET_ON_START: wiped " + wiped
+                    + " chain state file(s); chain epoch is now " + epoch);
+        }
+        chainEpoch.set(loadEpoch(epochFile));
+
+        // Bring every previously assigned node back to life (see class javadoc).
+        int known = nextNodeIndex.get();
+        if (known > 0) {
+            System.out.println("[Orchestrator] Respawning " + known + " previously assigned node(s)...");
+            for (int i = 0; i < known; i++) {
+                try {
+                    spawnNode(i, config);
+                } catch (Exception e) {
+                    System.err.println("[Orchestrator] Failed to respawn node " + i + ": " + e.getMessage());
+                }
+            }
+        }
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
@@ -78,46 +132,12 @@ public class NodeOrchestrator {
                         int nodeIndex = nextNodeIndex.getAndIncrement();
                         persistIndex(indexFile, nextNodeIndex.get());
 
-                        // 1. Generate identity deterministically exactly like Node.java does
-                        Wallet wallet = Wallet.fromSeedPhrase("GENESIS_NODE_" + (nodeIndex + 1));
-                        String pubKey = wallet.getPublicKeyBase64();
-                        String address = wallet.getAddress();
-                        int nodePort = 9000 + nodeIndex;
+                        Wallet wallet = spawnNode(nodeIndex, config);
 
-                        // 2. Spawn the node independently (process or docker container)
-                        List<String> command = new ArrayList<>();
-                        if ("docker".equalsIgnoreCase(launchMode)) {
-                            command.addAll(List.of(
-                                "docker", "run", "-d",
-                                "--name", "node-" + nodeIndex,
-                                "--hostname", "node-" + nodeIndex,
-                                "--network", dockerNetwork,
-                                "-e", "NODE_HOST_PATTERN=node-%d",
-                                "-v", nodesVolume + ":/app/nodes",
-                                nodeImage,
-                                String.valueOf(nodeIndex), String.valueOf(totalNodes),
-                                mempoolApiUrl, eventBusUrl
-                            ));
-                        } else {
-                            command.addAll(List.of(
-                                "java", "-cp", "target/blockchain.jar",
-                                "app.Main", String.valueOf(nodeIndex), String.valueOf(totalNodes),
-                                mempoolApiUrl, eventBusUrl
-                            ));
-                        }
-
-                        ProcessBuilder pb = new ProcessBuilder(command);
-                        pb.redirectErrorStream(true);
-                        pb.redirectOutput(new File("node_" + nodeIndex + "_orchestrated.log"));
-                        Process process = pb.start();
-                        System.out.println("[Orchestrator] Spawned Node " + nodeIndex
-                            + " on port " + nodePort
-                            + " (mode=" + launchMode + ", PID " + process.pid() + ")");
-
-                        // 3. Return JSON response to the backend
+                        // Return JSON response to the backend
                         String jsonResponse = String.format(
                             "{\n  \"status\": \"success\",\n  \"nodeIndex\": %d,\n  \"port\": %d,\n  \"publicKey\": \"%s\",\n  \"address\": \"%s\"\n}",
-                            nodeIndex, nodePort, pubKey, address
+                            nodeIndex, 9000 + nodeIndex, wallet.getPublicKeyBase64(), wallet.getAddress()
                         );
 
                         byte[] responseBytes = jsonResponse.getBytes(StandardCharsets.UTF_8);
@@ -144,7 +164,8 @@ public class NodeOrchestrator {
         // Lightweight readiness probe for docker-compose healthchecks and the
         // backend's genesis bootstrap retry loop.
         server.createContext("/api/orchestrator/health", exchange -> {
-            byte[] body = ("{\"status\":\"ok\",\"nextNodeIndex\":" + nextNodeIndex.get() + "}")
+            byte[] body = ("{\"status\":\"ok\",\"nextNodeIndex\":" + nextNodeIndex.get()
+                    + ",\"chainEpoch\":" + chainEpoch.get() + "}")
                     .getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, body.length);
@@ -156,11 +177,98 @@ public class NodeOrchestrator {
         server.setExecutor(null); // creates a default executor
         server.start();
         System.out.println("Node Orchestrator started on port " + port
-            + " | mode=" + launchMode
-            + " | totalNodes=" + totalNodes
+            + " | mode=" + config.launchMode()
+            + " | totalNodes=" + config.totalNodes()
             + " | nextNodeIndex=" + nextNodeIndex.get()
-            + " | mempool=" + mempoolApiUrl
-            + " | eventBus=" + eventBusUrl);
+            + " | mempool=" + config.mempoolApiUrl()
+            + " | eventBus=" + config.eventBusUrl());
+    }
+
+    /**
+     * Derives the node's deterministic identity and launches it (process or
+     * container). Used both for fresh spawns (HTTP endpoint) and for the
+     * respawn-on-startup loop; identity derivation is deterministic, so
+     * respawning yields exactly the same keys as the original spawn.
+     */
+    private static Wallet spawnNode(int nodeIndex, Config config) throws IOException, InterruptedException {
+        // 1. Generate identity deterministically exactly like Node.java does
+        Wallet wallet = Wallet.fromSeedPhrase("GENESIS_NODE_" + (nodeIndex + 1));
+        int nodePort = 9000 + nodeIndex;
+
+        // 2. Spawn the node independently (process or docker container)
+        List<String> command = new ArrayList<>();
+        if (config.dockerMode()) {
+            // A stopped leftover container would block `docker run --name`;
+            // remove it first (the node's chain state lives on the volume,
+            // not in the container, so nothing is lost).
+            new ProcessBuilder("docker", "rm", "-f", "node-" + nodeIndex)
+                    .redirectErrorStream(true)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .start()
+                    .waitFor();
+
+            command.addAll(List.of(
+                "docker", "run", "-d",
+                "--name", "node-" + nodeIndex,
+                "--hostname", "node-" + nodeIndex,
+                "--network", config.dockerNetwork(),
+                "-e", "NODE_HOST_PATTERN=node-%d",
+                "-v", config.nodesVolume() + ":/app/nodes",
+                config.nodeImage(),
+                String.valueOf(nodeIndex), String.valueOf(config.totalNodes()),
+                config.mempoolApiUrl(), config.eventBusUrl()
+            ));
+        } else {
+            command.addAll(List.of(
+                "java", "-cp", "target/blockchain.jar",
+                "app.Main", String.valueOf(nodeIndex), String.valueOf(config.totalNodes()),
+                config.mempoolApiUrl(), config.eventBusUrl()
+            ));
+        }
+
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.redirectErrorStream(true);
+        pb.redirectOutput(new File("node_" + nodeIndex + "_orchestrated.log"));
+        Process process = pb.start();
+        System.out.println("[Orchestrator] Spawned Node " + nodeIndex
+            + " on port " + nodePort
+            + " (mode=" + config.launchMode() + ", PID " + process.pid() + ")");
+        return wallet;
+    }
+
+    /** Deletes node chain databases (node_*.db + SQLite -wal/-shm sidecars). */
+    private static int wipeChainState(Path nodesDir) {
+        int wiped = 0;
+        try (var files = Files.newDirectoryStream(nodesDir, "node_*.db*")) {
+            for (Path file : files) {
+                Files.deleteIfExists(file);
+                wiped++;
+            }
+        } catch (IOException e) {
+            System.err.println("[Orchestrator] Failed to wipe chain state: " + e.getMessage());
+        }
+        return wiped;
+    }
+
+    private static long bumpEpoch(Path epochFile) {
+        long next = loadEpoch(epochFile) + 1;
+        try {
+            Files.writeString(epochFile, String.valueOf(next));
+        } catch (IOException e) {
+            System.err.println("[Orchestrator] Could not persist chain epoch: " + e.getMessage());
+        }
+        return next;
+    }
+
+    private static long loadEpoch(Path epochFile) {
+        try {
+            if (Files.exists(epochFile)) {
+                return Long.parseLong(Files.readString(epochFile).trim());
+            }
+        } catch (Exception e) {
+            System.err.println("[Orchestrator] Could not read chain epoch, assuming 0: " + e.getMessage());
+        }
+        return 0;
     }
 
     private static int loadPersistedIndex(Path indexFile) {

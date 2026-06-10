@@ -32,6 +32,19 @@ public class OrchestratorWalletService implements WalletService {
         this.restClient = restClient;
     }
 
+    // Readiness/epoch probe. chainEpoch increments on every chain reset, which
+    // tells ChainStateReconciler to replay balances onto the fresh chain.
+    public OrchestratorHealth health() {
+        try {
+            return restClient.get()
+                    .uri("/api/orchestrator/health")
+                    .retrieve()
+                    .body(OrchestratorHealth.class);
+        } catch (RestClientException exception) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Node orchestrator is unavailable");
+        }
+    }
+
     @Override
     public NodeIdentity provisionUserNode(UUID ownerId) {
         return spawnNode();

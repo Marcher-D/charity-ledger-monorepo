@@ -19,4 +19,10 @@ public interface MempoolPublisher {
     // System-sent transactions (DEPOSIT: system -> user): signed locally with
     // the derivable SYSTEM_DEPOSIT_KEY_V1 key.
     void publishSystemSigned(TransactionCache transaction, String receiverPubKey);
+
+    // Publishes an already-signed transaction without touching any
+    // TransactionCache row. Used by ChainStateReconciler to replay balances
+    // onto a freshly reset chain: the resulting TXN_VALIDATED events match no
+    // cached row and are deliberately ignored off-chain.
+    void publishPrebuilt(OnChainTransactionMessage message);
 }

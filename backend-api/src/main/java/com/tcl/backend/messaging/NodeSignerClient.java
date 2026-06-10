@@ -24,19 +24,37 @@ public class NodeSignerClient {
         this.properties = properties;
     }
 
+    // A node container needs a few seconds after spawn before its signing
+    // service accepts connections (JVM boot). Retry briefly so a user who
+    // registers and immediately transacts doesn't get a spurious 503.
+    private static final int MAX_ATTEMPTS = 4;
+    private static final long RETRY_DELAY_MS = 2_000;
+
     public NodeSignResponse sign(int senderNodeIndex, NodeSignRequest request) {
         RestClient restClient = OnChainRestClientFactory.create(
                 properties.signerBaseUrl(senderNodeIndex), properties.timeoutMs());
-        NodeSignResponse response;
-        try {
-            response = restClient.post()
-                    .uri("/api/signer/sign")
-                    .body(request)
-                    .retrieve()
-                    .body(NodeSignResponse.class);
-        } catch (RestClientException exception) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Signing service of node " + senderNodeIndex + " is unavailable");
+        NodeSignResponse response = null;
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                response = restClient.post()
+                        .uri("/api/signer/sign")
+                        .body(request)
+                        .retrieve()
+                        .body(NodeSignResponse.class);
+                break;
+            } catch (RestClientException exception) {
+                if (attempt == MAX_ATTEMPTS) {
+                    throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
+                            "Signing service of node " + senderNodeIndex + " is unavailable");
+                }
+                try {
+                    Thread.sleep(RETRY_DELAY_MS);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
+                            "Signing service of node " + senderNodeIndex + " is unavailable");
+                }
+            }
         }
 
         if (response == null || isBlank(response.txId()) || isBlank(response.ed25519Signature())) {
