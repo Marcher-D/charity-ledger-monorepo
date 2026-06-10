@@ -17,6 +17,9 @@ FROM nginx:alpine
 # Copy built static files from Stage 1 into Nginx's serving folder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# SPA routing config: serve index.html for client-side routes (BrowserRouter)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 # Port 80 is Nginx's default
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

@@ -51,6 +51,17 @@ export default function CampaignDetail() {
     fetchCampaignData();
   }, [fetchCampaignData]);
 
+  // Auto-refresh while any donation is still waiting for on-chain
+  // confirmation, so the progress bar and donor statuses update to
+  // SUCCESS/FAILED without a manual reload (consensus takes ~10-30s).
+  useEffect(() => {
+    const hasPending = donors.some((donor) => donor.status === 'PENDING');
+    if (!hasPending) return undefined;
+
+    const intervalId = setInterval(fetchCampaignData, 5000);
+    return () => clearInterval(intervalId);
+  }, [donors, fetchCampaignData]);
+
   if (loading) {
     return <div className="text-center py-20 text-xl font-bold">Loading data from Blockchain...</div>;
   }

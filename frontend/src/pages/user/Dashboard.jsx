@@ -28,7 +28,10 @@ export default function Dashboard() {
         apiRequest('/api/v1/transactions/me?limit=5') 
       ]);
       setProfile(profileData);
-      setTransactions(Array.isArray(txData) ? txData : txData.items || []); 
+      // The backend returns the full history (the limit query param is not
+      // implemented server-side); keep the dashboard to the most recent ones.
+      const txList = Array.isArray(txData) ? txData : txData.items || [];
+      setTransactions(txList.slice(0, 10));
     } catch (err) {
       console.error("Dashboard error:", err);
       toast.error("Cannot load wallet data!");
@@ -56,6 +59,17 @@ export default function Dashboard() {
     // Nếu vượt qua bài kiểm tra (là User thường), tiến hành gọi API như cũ
     fetchDashboardData();
   }, [navigate]);
+
+  // Auto-refresh while any transaction is still waiting for on-chain
+  // confirmation. Consensus finalizes in ~10-30s; without this the user has
+  // to reload manually to see PENDING turn into SUCCESS/FAILED.
+  useEffect(() => {
+    const hasPending = transactions.some((tx) => tx.status === 'PENDING');
+    if (!hasPending) return undefined;
+
+    const intervalId = setInterval(fetchDashboardData, 5000);
+    return () => clearInterval(intervalId);
+  }, [transactions]);
 
   // Hàm chuyển đổi quyền Validator
   const parseAmount = (amount) => {
