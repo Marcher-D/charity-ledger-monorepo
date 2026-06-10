@@ -1,0 +1,942 @@
+????????????????????????????????????????????????????????
+?  Distributed Blockchain — Algorand BFT Consensus     ?
+????????????????????????????????????????????????????????
+?  Node       : 4 / 5                                    ?
+?  Port       : 9004                                      ?
+?  DB         : nodes/node_4.db                          ?
+?  Mempool API: http://localhost:8080                        ?
+?  EventBus   : mock://nodes/event_bus_queue.jsonl                 ?
+????????????????????????????????????????????????????????
+
+
+[Node 4] ==================== STARTING ====================
+[Node 4] Port=9004 DB=nodes/node_4.db
+[DB] Initialized: nodes/node_4.db
+[Node 4] Loaded genesis identity.
+[Node 4] FIRST BOOT — injecting genesis state.
+[DB] Genesis block + 6 accounts + 6 synthetic stake txs injected.
+[EventGateway] Using mock EventBus file: C:\Users\Admin\eclipse-workspace\Proof_of_Stake\nodes\event_bus_queue.jsonl
+[NetworkEngine] Listening on :9004
+[NetworkEngine] Started on port 9004 | Seeds: [localhost:9000, localhost:9001, localhost:9002, localhost:9003, localhost:9005]
+[SharedBuffer] Initialized HTTP Client. Backend: http://localhost:8080
+[SharedBuffer] Fetching next batch via HTTP...
+[NetworkEngine] Connected: 127.0.0.1:9002
+[NetworkEngine] Connected: 127.0.0.1:9001
+[NetworkEngine] Connected: 127.0.0.1:9000
+[NetworkEngine] Connected: 127.0.0.1:9003
+[CatchupService] Started background sync daemon.
+[ConsensusEngine] Started.
+[Node 4] ==================== RUNNING ====================
+
+[ConsensusEngine] Resuming from round 1
+[Main] Node is running. Press Ctrl+C to stop.
+
+[ConsensusEngine] ========== ROUND 1 ==========
+[ConsensusEngine] Captured 0 txs for round 1
+[Phase 1] Value Propose — round=1
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=2
+[Phase 1] ? ELECTED AS PROPOSER (weight=2)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #1 | txs=0 | hash=0b646941]
+[Phase 2] Pre-Validation — collecting proposals...
+[NetworkEngine] Connected: 127.0.0.1:58287
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[NetworkEngine] Connected: 127.0.0.1:58289
+[NetworkEngine] Connected: 127.0.0.1:58294
+[NetworkEngine] Connected: 127.0.0.1:58298
+[NetworkEngine] Connected: 127.0.0.1:58301
+[NetworkEngine] Connected: 127.0.0.1:9005
+[Phase 2] Collected 2 proposals.
+[Phase 2] Best_Proposal = 0b646941
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=158
+[Phase 3] ? ELECTED AS VOTER (weight=158) — voting for: 0b646941
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] SUPERMAJORITY for 0b646941 (weight=805 > 680)
+[Phase 5] BBA* Micro-Loop — initial choice: 0b646941
+[Phase 5] BBA* converged: 0b646941 (w=822)
+[Phase 6] Halting Condition — finalWinner=0b646941
+[Phase 6] CertifyVote gossiped (weight=138)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Certificate: [Certificate round=1 | hash=0b646941 | weight=803 | votes=5]
+[SharedBuffer] CertificateEvent | round=1 | isBottom=false | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[StateEngine] Block applied: [Block #1 | txs=0 | hash=0b646941]
+[NetworkEngine] Certificate COMPLETE! round=1 hash=0b646941 weight=803
+[Phase 6] Block committed: [Block #1 | txs=0 | hash=0b646941]
+[Phase 6] Round 1 complete. Advancing to round 2.
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[EMATimeout] Round took 6577ms | EMA=4773ms | next=7159ms
+[ConsensusEngine] Round 1 complete in 6577ms
+
+[ConsensusEngine] ========== ROUND 2 ==========
+[ConsensusEngine] Captured 0 txs for round 2
+[Phase 1] Value Propose — round=2
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=2
+[Phase 1] ? ELECTED AS PROPOSER (weight=2)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #2 | txs=0 | hash=52a34a9b]
+[Phase 2] Pre-Validation — collecting proposals...
+[NetworkEngine] Certificate COMPLETE! round=2 hash=00000000 weight=700
+[SharedBuffer] CertificateEvent | round=2 | isBottom=true | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[Phase 2] Collected 2 proposals.
+[Phase 2] Best_Proposal = 52a34a9b
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=158
+[Phase 3] ? ELECTED AS VOTER (weight=158) — voting for: 52a34a9b
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Certificate interrupt — advancing to Phase 6.
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=166)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Certificate: [Certificate round=2 | hash=00000000 | weight=700 | votes=4]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #2 | txs=0 | hash=f07fbfe5]
+[Phase 6] Round 2 complete. Advancing to round 3.
+[EMATimeout] Round took 245ms | EMA=3415ms | next=5122ms
+[ConsensusEngine] Round 2 complete in 245ms
+
+[ConsensusEngine] ========== ROUND 3 ==========
+[ConsensusEngine] Captured 0 txs for round 3
+[Phase 1] Value Propose — round=3
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=3
+[Phase 1] ? ELECTED AS PROPOSER (weight=3)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #3 | txs=0 | hash=c0eb72b9]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 2 proposals.
+[Phase 2] Best_Proposal = 3c8c80c3
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=168
+[Phase 3] ? ELECTED AS VOTER (weight=168) — voting for: 3c8c80c3
+[Phase 4] Resolving Filter — counting soft votes...
+[SharedBuffer] CertificateEvent | round=3 | isBottom=true | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[NetworkEngine] Certificate COMPLETE! round=3 hash=00000000 weight=694
+[NetworkEngine] Certificate COMPLETE! round=3 hash=00000000 weight=859
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[Phase 4] Timeout — no supermajority. BBA_Choice = BOTTOM
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=173)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Certificate: [Certificate round=3 | hash=00000000 | weight=694 | votes=4]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #3 | txs=0 | hash=3f6286ae]
+[Phase 6] Round 3 complete. Advancing to round 4.
+[EMATimeout] Round took 10330ms | EMA=5489ms | next=8233ms
+[ConsensusEngine] Round 3 complete in 10330ms
+
+[ConsensusEngine] ========== ROUND 4 ==========
+[ConsensusEngine] Captured 0 txs for round 4
+[Phase 1] Value Propose — round=4
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=2
+[Phase 1] ? ELECTED AS PROPOSER (weight=2)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #4 | txs=0 | hash=f437a741]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 1 proposals.
+[Phase 2] Best_Proposal = f437a741
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=161
+[Phase 3] ? ELECTED AS VOTER (weight=161) — voting for: f437a741
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Timeout — no supermajority. BBA_Choice = BOTTOM
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] BBA* converged: BOTTOM (w=840)
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=170)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Certificate: [Certificate round=4 | hash=00000000 | weight=803 | votes=5]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #4 | txs=0 | hash=a0b7f6ee]
+[NetworkEngine] Certificate COMPLETE! round=4 hash=00000000 weight=803
+[SharedBuffer] CertificateEvent | round=4 | isBottom=true | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] Round 4 complete. Advancing to round 5.
+[EMATimeout] Round took 16705ms | EMA=8854ms | next=10000ms
+[ConsensusEngine] Round 4 complete in 16705ms
+
+[ConsensusEngine] ========== ROUND 5 ==========
+[ConsensusEngine] Captured 0 txs for round 5
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[Phase 1] Value Propose — round=5
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=0
+[Phase 1] Not selected as proposer this round.
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 3 proposals.
+[Phase 2] Best_Proposal = c2a328f1
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=138
+[Phase 3] ? ELECTED AS VOTER (weight=138) — voting for: c2a328f1
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Timeout — no supermajority. BBA_Choice = BOTTOM
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] BBA* converged: BOTTOM (w=777)
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=164)
+[Phase 6] Waiting for BlockCertificate...
+[NetworkEngine] Certificate COMPLETE! round=5 hash=00000000 weight=803
+[SharedBuffer] CertificateEvent | round=5 | isBottom=true | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] Certificate: [Certificate round=5 | hash=00000000 | weight=803 | votes=5]
+[Phase 6] BOTTOM round — creating empty block.
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[StateEngine] Block applied: [Block #5 | txs=0 | hash=acfdc40a]
+[Phase 6] Round 5 complete. Advancing to round 6.
+[EMATimeout] Round took 20101ms | EMA=12228ms | next=10000ms
+[ConsensusEngine] Round 5 complete in 20101ms
+
+[ConsensusEngine] ========== ROUND 6 ==========
+[ConsensusEngine] Captured 0 txs for round 6
+[Phase 1] Value Propose — round=6
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=7
+[Phase 1] ? ELECTED AS PROPOSER (weight=7)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #6 | txs=0 | hash=1d61080e]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 5 proposals.
+[Phase 2] Best_Proposal = e50a621c
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=188
+[Phase 3] ? ELECTED AS VOTER (weight=188) — voting for: e50a621c
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] SUPERMAJORITY for e50a621c (weight=727 > 680)
+[Phase 5] BBA* Micro-Loop — initial choice: e50a621c
+[Phase 5] BBA* converged: e50a621c (w=797)
+[Phase 6] Halting Condition — finalWinner=e50a621c
+[Phase 6] CertifyVote gossiped (weight=149)
+[Phase 6] Waiting for BlockCertificate...
+[NetworkEngine] Certificate COMPLETE! round=6 hash=e50a621c weight=815
+[SharedBuffer] CertificateEvent | round=6 | isBottom=false | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] Certificate: [Certificate round=6 | hash=e50a621c | weight=815 | votes=5]
+[StateEngine] Block applied: [Block #6 | txs=0 | hash=e50a621c]
+[Phase 6] Block committed: [Block #6 | txs=0 | hash=e50a621c]
+[Phase 6] Round 6 complete. Advancing to round 7.
+[EMATimeout] Round took 10123ms | EMA=11597ms | next=10000ms
+[ConsensusEngine] Round 6 complete in 10123ms
+
+[ConsensusEngine] ========== ROUND 7 ==========
+[ConsensusEngine] Captured 0 txs for round 7
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[Phase 1] Value Propose — round=7
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=2
+[Phase 1] ? ELECTED AS PROPOSER (weight=2)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #7 | txs=0 | hash=9d55292e]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 4 proposals.
+[Phase 2] Best_Proposal = c7e9cd3e
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=157
+[Phase 3] ? ELECTED AS VOTER (weight=157) — voting for: c7e9cd3e
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] SUPERMAJORITY for c7e9cd3e (weight=779 > 680)
+[Phase 5] BBA* Micro-Loop — initial choice: c7e9cd3e
+[Phase 5] BBA* converged: c7e9cd3e (w=871)
+[Phase 6] Halting Condition — finalWinner=c7e9cd3e
+[Phase 6] CertifyVote gossiped (weight=183)
+[Phase 6] Waiting for BlockCertificate...
+[NetworkEngine] Certificate COMPLETE! round=7 hash=c7e9cd3e weight=827
+[SharedBuffer] CertificateEvent | round=7 | isBottom=false | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] Certificate: [Certificate round=7 | hash=c7e9cd3e | weight=827 | votes=5]
+[StateEngine] Block applied: [Block #7 | txs=0 | hash=c7e9cd3e]
+[Phase 6] Block committed: [Block #7 | txs=0 | hash=c7e9cd3e]
+[Phase 6] Round 7 complete. Advancing to round 8.
+[EMATimeout] Round took 10084ms | EMA=11143ms | next=10000ms
+[ConsensusEngine] Round 7 complete in 10084ms
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+
+[ConsensusEngine] ========== ROUND 8 ==========
+[ConsensusEngine] Captured 0 txs for round 8
+[Phase 1] Value Propose — round=8
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=1
+[Phase 1] ? ELECTED AS PROPOSER (weight=1)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #8 | txs=0 | hash=62465a69]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 1 proposals.
+[Phase 2] Best_Proposal = 62465a69
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=147
+[Phase 3] ? ELECTED AS VOTER (weight=147) — voting for: 62465a69
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Certificate interrupt — advancing to Phase 6.
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=174)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Skipping invalid or stale cert from round=7
+[NetworkEngine] Certificate COMPLETE! round=8 hash=00000000 weight=824
+[SharedBuffer] CertificateEvent | round=8 | isBottom=true | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] Certificate: [Certificate round=8 | hash=00000000 | weight=824 | votes=5]
+[Phase 6] BOTTOM round — creating empty block.
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[StateEngine] Block applied: [Block #8 | txs=0 | hash=32743635]
+[Phase 6] Round 8 complete. Advancing to round 9.
+[EMATimeout] Round took 66ms | EMA=7820ms | next=10000ms
+[ConsensusEngine] Round 8 complete in 66ms
+
+[ConsensusEngine] ========== ROUND 9 ==========
+[ConsensusEngine] Captured 0 txs for round 9
+[Phase 1] Value Propose — round=9
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=5
+[Phase 1] ? ELECTED AS PROPOSER (weight=5)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #9 | txs=0 | hash=b9cef1e6]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 1 proposals.
+[Phase 2] Best_Proposal = b9cef1e6
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=181
+[Phase 3] ? ELECTED AS VOTER (weight=181) — voting for: b9cef1e6
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Certificate interrupt — advancing to Phase 6.
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=158)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Skipping invalid or stale cert from round=8
+[NetworkEngine] Certificate COMPLETE! round=9 hash=00000000 weight=789
+[SharedBuffer] CertificateEvent | round=9 | isBottom=true | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[Phase 6] Certificate: [Certificate round=9 | hash=00000000 | weight=789 | votes=5]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #9 | txs=0 | hash=bf04508a]
+[Phase 6] Round 9 complete. Advancing to round 10.
+[EMATimeout] Round took 20206ms | EMA=11536ms | next=10000ms
+[ConsensusEngine] Round 9 complete in 20206ms
+
+[ConsensusEngine] ========== ROUND 10 ==========
+[ConsensusEngine] Captured 0 txs for round 10
+[Phase 1] Value Propose — round=10
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=2
+[Phase 1] ? ELECTED AS PROPOSER (weight=2)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #10 | txs=0 | hash=0c52447d]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 1 proposals.
+[Phase 2] Best_Proposal = 0c52447d
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=159
+[Phase 3] ? ELECTED AS VOTER (weight=159) — voting for: 0c52447d
+[Phase 4] Resolving Filter — counting soft votes...
+[NetworkEngine] Certificate COMPLETE! round=10 hash=00000000 weight=798
+[SharedBuffer] CertificateEvent | round=10 | isBottom=true | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 4] Timeout — no supermajority. BBA_Choice = BOTTOM
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=187)
+[Phase 6] Waiting for BlockCertificate...
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[Phase 6] Certificate: [Certificate round=10 | hash=00000000 | weight=798 | votes=5]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #10 | txs=0 | hash=e236d8bb]
+[Phase 6] Round 10 complete. Advancing to round 11.
+[EMATimeout] Round took 20106ms | EMA=14107ms | next=10000ms
+[ConsensusEngine] Round 10 complete in 20106ms
+
+[ConsensusEngine] ========== ROUND 11 ==========
+[ConsensusEngine] Captured 0 txs for round 11
+[Phase 1] Value Propose — round=11
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=3
+[Phase 1] ? ELECTED AS PROPOSER (weight=3)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #11 | txs=0 | hash=02bdae3a]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 5 proposals.
+[Phase 2] Best_Proposal = 3a7c5f55
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=163
+[Phase 3] ? ELECTED AS VOTER (weight=163) — voting for: 3a7c5f55
+[NetworkEngine] Certificate COMPLETE! round=11 hash=3a7c5f55 weight=829
+[SharedBuffer] CertificateEvent | round=11 | isBottom=false | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Certificate interrupt — advancing to Phase 6.
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=171)
+[Phase 6] Waiting for BlockCertificate...
+[NetworkEngine] Certificate COMPLETE! round=12 hash=00000000 weight=713
+[Phase 6] Certificate: [Certificate round=11 | hash=3a7c5f55 | weight=829 | votes=5]
+[StateEngine] Block applied: [Block #11 | txs=0 | hash=3a7c5f55]
+[SharedBuffer] CertificateEvent | round=12 | isBottom=true | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] Block committed: [Block #11 | txs=0 | hash=3a7c5f55]
+[Phase 6] Round 11 complete. Advancing to round 12.
+[EMATimeout] Round took 10175ms | EMA=12927ms | next=10000ms
+[ConsensusEngine] Round 11 complete in 10175ms
+[SharedBuffer] Batch 1 ready: 0 transactions staged.
+
+[ConsensusEngine] ========== ROUND 12 ==========
+[ConsensusEngine] Captured 0 txs for round 12
+[Phase 1] Value Propose — round=12
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=4
+[Phase 1] ? ELECTED AS PROPOSER (weight=4)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #12 | txs=0 | hash=8fc50de4]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 1 proposals.
+[Phase 2] Best_Proposal = 8fc50de4
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=172
+[Phase 3] ? ELECTED AS VOTER (weight=172) — voting for: 8fc50de4
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Certificate interrupt — advancing to Phase 6.
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=180)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Certificate: [Certificate round=12 | hash=00000000 | weight=713 | votes=4]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #12 | txs=0 | hash=3d3006b4]
+[Phase 6] Round 12 complete. Advancing to round 13.
+[EMATimeout] Round took 20ms | EMA=9055ms | next=10000ms
+[ConsensusEngine] Round 12 complete in 20ms
+
+[ConsensusEngine] ========== ROUND 13 ==========
+[ConsensusEngine] Captured 0 txs for round 13
+[Phase 1] Value Propose — round=13
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=4
+[Phase 1] ? ELECTED AS PROPOSER (weight=4)
+[Phase 1] Using 0 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #13 | txs=0 | hash=e2a43d03]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 2 proposals.
+[Phase 2] Best_Proposal = c82e744e
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=175
+[Phase 3] ? ELECTED AS VOTER (weight=175) — voting for: c82e744e
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Timeout — no supermajority. BBA_Choice = BOTTOM
+[NetworkEngine] Certificate COMPLETE! round=13 hash=00000000 weight=707
+[SharedBuffer] CertificateEvent | round=13 | isBottom=true | flushing 0 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[NetworkEngine] Certificate COMPLETE! round=13 hash=00000000 weight=898
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=150)
+[Phase 6] Waiting for BlockCertificate...
+[SharedBuffer] Batch 1 ready: 1 transactions staged.
+[Phase 6] Certificate: [Certificate round=13 | hash=00000000 | weight=707 | votes=4]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #13 | txs=0 | hash=8059e396]
+[Phase 6] Round 13 complete. Advancing to round 14.
+[EMATimeout] Round took 20110ms | EMA=12372ms | next=10000ms
+[ConsensusEngine] Round 13 complete in 20110ms
+
+[ConsensusEngine] ========== ROUND 14 ==========
+[ConsensusEngine] Captured 1 txs for round 14
+[Phase 1] Value Propose — round=14
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=3
+[Phase 1] ? ELECTED AS PROPOSER (weight=3)
+[Phase 1] Using 1 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #14 | txs=1 | hash=3d1b1e98]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 4 proposals.
+[Phase 2] Best_Proposal = 527cb437
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=165
+[Phase 3] ? ELECTED AS VOTER (weight=165) — voting for: 527cb437
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Timeout — no supermajority. BBA_Choice = BOTTOM
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] BBA* converged: BOTTOM (w=714)
+[NetworkEngine] Certificate COMPLETE! round=14 hash=00000000 weight=792
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[SharedBuffer] CertificateEvent | round=14 | isBottom=true | flushing 1 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] CertifyVote gossiped (weight=168)
+[Phase 6] Waiting for BlockCertificate...
+[SharedBuffer] Batch 1 ready: 1 transactions staged.
+[Phase 6] Certificate: [Certificate round=14 | hash=00000000 | weight=792 | votes=5]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #14 | txs=0 | hash=44e458b2]
+[EventGateway] ? TXN_REJECTED(Timeout) | txId=35166f450d7635cf4235e759fcf93a6682aea8035fb6fc524607c9fbe96dcb2b
+[EventGateway] Timeout batch: fired=1 | deduplicated=0
+[Phase 6] Round 14 complete. Advancing to round 15.
+[EMATimeout] Round took 20137ms | EMA=14701ms | next=10000ms
+[ConsensusEngine] Round 14 complete in 20137ms
+
+[ConsensusEngine] ========== ROUND 15 ==========
+[ConsensusEngine] Captured 1 txs for round 15
+[Phase 1] Value Propose — round=15
+[SharedBuffer] NACK (Round Bottom/Failure) | Called POST /api/mempool/requeue for batchId=1 | Status=200
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=6
+[Phase 1] ? ELECTED AS PROPOSER (weight=6)
+[Phase 1] Using 1 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #15 | txs=1 | hash=249ee75a]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 1 proposals.
+[Phase 2] Best_Proposal = 249ee75a
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=182
+[Phase 3] ? ELECTED AS VOTER (weight=182) — voting for: 249ee75a
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Certificate interrupt — advancing to Phase 6.
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=160)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Skipping invalid or stale cert from round=14
+[NetworkEngine] Certificate COMPLETE! round=15 hash=00000000 weight=808
+[SharedBuffer] CertificateEvent | round=15 | isBottom=true | flushing 1 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] Certificate: [Certificate round=15 | hash=00000000 | weight=808 | votes=5]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #15 | txs=0 | hash=335a86e2]
+[SharedBuffer] Batch 2 ready: 1 transactions staged.
+[EventGateway] ? TXN_REJECTED(Timeout) | txId=35166f450d7635cf4235e759fcf93a6682aea8035fb6fc524607c9fbe96dcb2b
+[EventGateway] Timeout batch: fired=1 | deduplicated=0
+[Phase 6] Round 15 complete. Advancing to round 16.
+[EMATimeout] Round took 62ms | EMA=10309ms | next=10000ms
+[ConsensusEngine] Round 15 complete in 62ms
+
+[ConsensusEngine] ========== ROUND 16 ==========
+[ConsensusEngine] Captured 1 txs for round 16
+[SharedBuffer] NACK (Round Bottom/Failure) | Called POST /api/mempool/requeue for batchId=1 | Status=200
+[Phase 1] Value Propose — round=16
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=6
+[Phase 1] ? ELECTED AS PROPOSER (weight=6)
+[Phase 1] Using 1 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #16 | txs=1 | hash=d69ba10f]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 4 proposals.
+[Phase 2] Best_Proposal = c7115219
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=185
+[Phase 3] ? ELECTED AS VOTER (weight=185) — voting for: c7115219
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Certificate interrupt — advancing to Phase 6.
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=181)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Skipping invalid or stale cert from round=15
+[Phase 6] Skipping invalid or stale cert from round=15
+[Phase 6] Skipping invalid or stale cert from round=15
+[Phase 6] Skipping invalid or stale cert from round=15
+[Phase 6] Skipping invalid or stale cert from round=15
+[Phase 6] Skipping invalid or stale cert from round=15
+[Phase 6] Skipping invalid or stale cert from round=15
+[Phase 6] Skipping invalid or stale cert from round=15
+[Phase 6] Skipping invalid or stale cert from round=15
+[Phase 6] Skipping invalid or stale cert from round=15
+[Phase 6] Certificate timeout — treating as BOTTOM.
+[Phase 6] Certificate: [Certificate round=16 | hash=00000000 | weight=0 | votes=0]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #16 | txs=0 | hash=c6ea3af3]
+[EventGateway] ? TXN_REJECTED(Timeout) | txId=35166f450d7635cf4235e759fcf93a6682aea8035fb6fc524607c9fbe96dcb2b
+[EventGateway] Timeout batch: fired=1 | deduplicated=0
+[Phase 6] Round 16 complete. Advancing to round 17.
+[EMATimeout] Round took 30307ms | EMA=16309ms | next=10000ms
+[ConsensusEngine] Round 16 complete in 30307ms
+[SharedBuffer] NACK (Round Bottom/Failure) | Called POST /api/mempool/requeue for batchId=2 | Status=200
+
+[ConsensusEngine] ========== ROUND 17 ==========
+[ConsensusEngine] Captured 1 txs for round 17
+[Phase 1] Value Propose — round=17
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=4
+[Phase 1] ? ELECTED AS PROPOSER (weight=4)
+[Phase 1] Using 1 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #17 | txs=1 | hash=524576c2]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 1 proposals.
+[Phase 2] Best_Proposal = 524576c2
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=174
+[Phase 3] ? ELECTED AS VOTER (weight=174) — voting for: 524576c2
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Timeout — no supermajority. BBA_Choice = BOTTOM
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Deadlock — running Common Coin (iter=1)
+[Phase 5 DEBUG] Received COMMON_COIN from PCLI8/Sx for iter 1
+[Phase 5 DEBUG] Added coinHash ba64bf9f to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from J3roBaun for iter 1
+[Phase 5 DEBUG] Added coinHash ab47cffc to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from IVk/jVu2 for iter 1
+[Phase 5 DEBUG] Added coinHash 4ef19035 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 1
+[Phase 5 DEBUG] Added coinHash d46b40d9 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 1
+[Phase 5 DEBUG] Added coinHash d46b40d9 to validCoins
+[Phase 5] Global Coin = 4ef19035a593dcd1...
+[Phase 5] Coin=EVEN ? BBA_Choice=BOTTOM
+[Phase 5] Deadlock — running Common Coin (iter=2)
+[Phase 5 DEBUG] Received COMMON_COIN from J3roBaun for iter 2
+[Phase 5 DEBUG] Added coinHash 6dbb11ab to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from PCLI8/Sx for iter 2
+[Phase 5 DEBUG] Added coinHash d9ee3a78 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from IVk/jVu2 for iter 2
+[Phase 5 DEBUG] Added coinHash d37111f4 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 2
+[Phase 5 DEBUG] Added coinHash c08e7702 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 2
+[Phase 5 DEBUG] Added coinHash c08e7702 to validCoins
+[Phase 5] Global Coin = 6dbb11ab7f9a818a...
+[Phase 5] Coin=EVEN ? BBA_Choice=BOTTOM
+[Phase 5] Deadlock — running Common Coin (iter=3)
+[Phase 5 DEBUG] Received COMMON_COIN from PCLI8/Sx for iter 3
+[Phase 5 DEBUG] Added coinHash 9c301d2a to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from J3roBaun for iter 3
+[Phase 5 DEBUG] Added coinHash 9fab9113 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from IVk/jVu2 for iter 3
+[Phase 5 DEBUG] Added coinHash 0e639dcb to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 3
+[Phase 5 DEBUG] Added coinHash 21159372 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 3
+[Phase 5 DEBUG] Added coinHash 21159372 to validCoins
+[Phase 5] Global Coin = 0e639dcbc79f9117...
+[Phase 5] Coin=ODD ? BBA_Choice=BOTTOM
+[Phase 5] Deadlock — running Common Coin (iter=4)
+[Phase 5 DEBUG] Received COMMON_COIN from PCLI8/Sx for iter 4
+[Phase 5 DEBUG] Added coinHash 17059152 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from J3roBaun for iter 4
+[Phase 5 DEBUG] Added coinHash 7f8eda78 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from IVk/jVu2 for iter 4
+[Phase 5 DEBUG] Added coinHash 2d174af3 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 4
+[Phase 5 DEBUG] Added coinHash ad96b3d2 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 4
+[Phase 5 DEBUG] Added coinHash ad96b3d2 to validCoins
+[Phase 5] Global Coin = 17059152da4db353...
+[Phase 5] Coin=ODD ? BBA_Choice=BOTTOM
+[Phase 5] Deadlock — running Common Coin (iter=5)
+[Phase 5 DEBUG] Received COMMON_COIN from IVk/jVu2 for iter 5
+[Phase 5 DEBUG] Added coinHash 6f0d3f96 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from J3roBaun for iter 5
+[Phase 5 DEBUG] Added coinHash 2ae5b3a9 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from PCLI8/Sx for iter 5
+[Phase 5 DEBUG] Added coinHash a7293f94 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 5
+[Phase 5 DEBUG] Added coinHash a4c5973d to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 5
+[Phase 5 DEBUG] Added coinHash a4c5973d to validCoins
+[Phase 5] Global Coin = 2ae5b3a906695802...
+[Phase 5] Coin=ODD ? BBA_Choice=BOTTOM
+[Phase 5] BBA* converged: BOTTOM (w=704)
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=138)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Certificate timeout — treating as BOTTOM.
+[Phase 6] Certificate: [Certificate round=17 | hash=00000000 | weight=0 | votes=0]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #17 | txs=0 | hash=9928e85a]
+[EventGateway] ? TXN_REJECTED(Timeout) | txId=35166f450d7635cf4235e759fcf93a6682aea8035fb6fc524607c9fbe96dcb2b
+[EventGateway] Timeout batch: fired=1 | deduplicated=0
+[Phase 6] Round 17 complete. Advancing to round 18.
+[EMATimeout] Round took 150114ms | EMA=56450ms | next=10000ms
+[ConsensusEngine] Round 17 complete in 150114ms
+
+[ConsensusEngine] ========== ROUND 18 ==========
+[ConsensusEngine] Captured 1 txs for round 18
+[Phase 1] Value Propose — round=18
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=9
+[Phase 1] ? ELECTED AS PROPOSER (weight=9)
+[Phase 1] Using 1 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #18 | txs=1 | hash=343f9424]
+[Phase 2] Pre-Validation — collecting proposals...
+[SharedBuffer] NACK (Round Bottom/Failure) | Called POST /api/mempool/requeue for batchId=2 | Status=200
+[Phase 2] Collected 4 proposals.
+[Phase 2] Best_Proposal = bc9ad23d
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=203
+[Phase 3] ? ELECTED AS VOTER (weight=203) — voting for: bc9ad23d
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Timeout — no supermajority. BBA_Choice = BOTTOM
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] BBA* converged: BOTTOM (w=689)
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=212)
+[Phase 6] Waiting for BlockCertificate...
+[NetworkEngine] Certificate COMPLETE! round=18 hash=00000000 weight=730
+[SharedBuffer] CertificateEvent | round=18 | isBottom=true | flushing 1 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] Certificate: [Certificate round=18 | hash=00000000 | weight=730 | votes=4]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #18 | txs=0 | hash=1ae59f3f]
+[EventGateway] ? TXN_REJECTED(Timeout) | txId=35166f450d7635cf4235e759fcf93a6682aea8035fb6fc524607c9fbe96dcb2b
+[SharedBuffer] Batch 3 ready: 1 transactions staged.
+[EventGateway] Timeout batch: fired=1 | deduplicated=0
+[Phase 6] Round 18 complete. Advancing to round 19.
+[EMATimeout] Round took 20068ms | EMA=45536ms | next=10000ms
+[ConsensusEngine] Round 18 complete in 20068ms
+
+[ConsensusEngine] ========== ROUND 19 ==========
+[ConsensusEngine] Captured 1 txs for round 19
+[Phase 1] Value Propose — round=19
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=3
+[Phase 1] ? ELECTED AS PROPOSER (weight=3)
+[Phase 1] Using 1 valid transactions from captured batch.
+[SharedBuffer] NACK (Round Bottom/Failure) | Called POST /api/mempool/requeue for batchId=2 | Status=200
+[Phase 1] Proposed block: [Block #19 | txs=1 | hash=b1c5ccc1]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 2 proposals.
+[Phase 2] Best_Proposal = b1c5ccc1
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=164
+[Phase 3] ? ELECTED AS VOTER (weight=164) — voting for: b1c5ccc1
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Timeout — no supermajority. BBA_Choice = BOTTOM
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] BBA* converged: BOTTOM (w=683)
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=160)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Certificate timeout — treating as BOTTOM.
+[Phase 6] Certificate: [Certificate round=19 | hash=00000000 | weight=0 | votes=0]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #19 | txs=0 | hash=98e4da58]
+[EventGateway] ? TXN_REJECTED(Timeout) | txId=35166f450d7635cf4235e759fcf93a6682aea8035fb6fc524607c9fbe96dcb2b
+[EventGateway] Timeout batch: fired=1 | deduplicated=0
+[Phase 6] Round 19 complete. Advancing to round 20.
+[EMATimeout] Round took 50052ms | EMA=46891ms | next=10000ms
+[ConsensusEngine] Round 19 complete in 50052ms
+
+[ConsensusEngine] ========== ROUND 20 ==========
+[ConsensusEngine] Captured 1 txs for round 20
+[SharedBuffer] NACK (Round Bottom/Failure) | Called POST /api/mempool/requeue for batchId=3 | Status=200
+[Phase 1] Value Propose — round=20
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=4
+[Phase 1] ? ELECTED AS PROPOSER (weight=4)
+[Phase 1] Using 1 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #20 | txs=1 | hash=7a16a439]
+[Phase 2] Pre-Validation — collecting proposals...
+[NetworkEngine] Certificate COMPLETE! round=17 hash=00000000 weight=828
+[Phase 2] Collected 1 proposals.
+[Phase 2] Best_Proposal = 7a16a439
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=170
+[Phase 3] ? ELECTED AS VOTER (weight=170) — voting for: 7a16a439
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Certificate interrupt — advancing to Phase 6.
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=158)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Skipping invalid or stale cert from round=17
+[Phase 6] Skipping invalid or stale cert from round=17
+[Phase 6] Skipping invalid or stale cert from round=17
+[Phase 6] Skipping invalid or stale cert from round=17
+[Phase 6] Skipping invalid or stale cert from round=17
+[Phase 6] Skipping invalid or stale cert from round=17
+[Phase 6] Skipping invalid or stale cert from round=17
+[SharedBuffer] CertificateEvent | round=20 | isBottom=true | flushing 1 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] Certificate: [Certificate round=20 | hash=00000000 | weight=796 | votes=5]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #20 | txs=0 | hash=b29c1b93]
+[EventGateway] ? TXN_REJECTED(Timeout) | txId=35166f450d7635cf4235e759fcf93a6682aea8035fb6fc524607c9fbe96dcb2b
+[SharedBuffer] Batch 4 ready: 1 transactions staged.
+[EventGateway] Timeout batch: fired=1 | deduplicated=0
+[Phase 6] Round 20 complete. Advancing to round 21.
+[EMATimeout] Round took 10027ms | EMA=35831ms | next=10000ms
+[ConsensusEngine] Round 20 complete in 10027ms
+
+[ConsensusEngine] ========== ROUND 21 ==========
+[ConsensusEngine] Captured 1 txs for round 21
+[Phase 1] Value Propose — round=21
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=4
+[Phase 1] ? ELECTED AS PROPOSER (weight=4)
+[Phase 1] Using 1 valid transactions from captured batch.
+[SharedBuffer] NACK (Round Bottom/Failure) | Called POST /api/mempool/requeue for batchId=3 | Status=200
+[Phase 1] Proposed block: [Block #21 | txs=1 | hash=cf139402]
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 4 proposals.
+[Phase 2] Best_Proposal = 2b2581e5
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=172
+[Phase 3] ? ELECTED AS VOTER (weight=172) — voting for: 2b2581e5
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Timeout — no supermajority. BBA_Choice = BOTTOM
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Deadlock — running Common Coin (iter=1)
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 1
+[Phase 5 DEBUG] Added coinHash d9494658 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from IVk/jVu2 for iter 1
+[Phase 5 DEBUG] Added coinHash c371d1ce to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from PCLI8/Sx for iter 1
+[Phase 5 DEBUG] Added coinHash 568d7869 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from J3roBaun for iter 1
+[Phase 5 DEBUG] Added coinHash 1aff9735 to validCoins
+[Phase 5 DEBUG] Received COMMON_COIN from vOiMnFvE for iter 1
+[Phase 5 DEBUG] Added coinHash d9494658 to validCoins
+[Phase 5] Global Coin = 1aff9735de9e452b...
+[Phase 5] Coin=EVEN ? BBA_Choice=BOTTOM
+[Phase 5] BBA* converged: BOTTOM (w=692)
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=148)
+[Phase 6] Waiting for BlockCertificate...
+[NetworkEngine] Certificate COMPLETE! round=19 hash=00000000 weight=847
+[Phase 6] Skipping invalid or stale cert from round=19
+[Phase 6] Skipping invalid or stale cert from round=19
+[Phase 6] Skipping invalid or stale cert from round=19
+[Phase 6] Skipping invalid or stale cert from round=19
+[Phase 6] Skipping invalid or stale cert from round=19
+[Phase 6] Skipping invalid or stale cert from round=19
+[Phase 6] Skipping invalid or stale cert from round=19
+[Phase 6] Certificate timeout — treating as BOTTOM.
+[Phase 6] Certificate: [Certificate round=21 | hash=00000000 | weight=0 | votes=0]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #21 | txs=0 | hash=b907b9ed]
+[EventGateway] ? TXN_REJECTED(Timeout) | txId=35166f450d7635cf4235e759fcf93a6682aea8035fb6fc524607c9fbe96dcb2b
+[EventGateway] Timeout batch: fired=1 | deduplicated=0
+[Phase 6] Round 21 complete. Advancing to round 22.
+[EMATimeout] Round took 70218ms | EMA=46147ms | next=10000ms
+[ConsensusEngine] Round 21 complete in 70218ms
+
+[ConsensusEngine] ========== ROUND 22 ==========
+[ConsensusEngine] Captured 1 txs for round 22
+[SharedBuffer] NACK (Round Bottom/Failure) | Called POST /api/mempool/requeue for batchId=4 | Status=200
+[Phase 1] Value Propose — round=22
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=3
+[Phase 1] ? ELECTED AS PROPOSER (weight=3)
+[Phase 1] Using 1 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #22 | txs=1 | hash=2eebd2dc]
+[Phase 2] Pre-Validation — collecting proposals...
+[NetworkEngine] Certificate COMPLETE! round=20 hash=00000000 weight=783
+[NetworkEngine] Certificate COMPLETE! round=20 hash=00000000 weight=962
+[Phase 2] Collected 2 proposals.
+[Phase 2] Best_Proposal = 2eebd2dc
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=165
+[Phase 3] ? ELECTED AS VOTER (weight=165) — voting for: 2eebd2dc
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Certificate interrupt — advancing to Phase 6.
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=158)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Skipping invalid or stale cert from round=20
+[Phase 6] Skipping invalid or stale cert from round=20
+[Phase 6] Skipping invalid or stale cert from round=20
+[NetworkEngine] Certificate COMPLETE! round=21 hash=00000000 weight=840
+[SharedBuffer] CertificateEvent | round=21 | isBottom=true | flushing 1 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[Phase 6] Skipping invalid or stale cert from round=20
+[Phase 6] Skipping invalid or stale cert from round=20
+[Phase 6] Skipping invalid or stale cert from round=20
+[Phase 6] Skipping invalid or stale cert from round=20
+[SharedBuffer] Batch 5 ready: 1 transactions staged.
+[NetworkEngine] Certificate COMPLETE! round=21 hash=00000000 weight=1005
+[Phase 6] Skipping invalid or stale cert from round=20
+[Phase 6] Skipping invalid or stale cert from round=20
+[Phase 6] Skipping invalid or stale cert from round=20
+[Phase 6] Skipping invalid or stale cert from round=20
+[Phase 6] Skipping invalid or stale cert from round=20
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[Phase 6] Skipping invalid or stale cert from round=21
+[NetworkEngine] Certificate COMPLETE! round=22 hash=00000000 weight=812
+[SharedBuffer] CertificateEvent | round=22 | isBottom=true | flushing 1 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[NetworkEngine] Certificate COMPLETE! round=22 hash=00000000 weight=977
+[Phase 6] Certificate: [Certificate round=22 | hash=00000000 | weight=812 | votes=5]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #22 | txs=0 | hash=90d594f4]
+[EventGateway] ? TXN_REJECTED(Timeout) | txId=35166f450d7635cf4235e759fcf93a6682aea8035fb6fc524607c9fbe96dcb2b
+[SharedBuffer] Batch 6 ready: 1 transactions staged.
+[EventGateway] Timeout batch: fired=1 | deduplicated=0
+[Phase 6] Round 22 complete. Advancing to round 23.
+[EMATimeout] Round took 158ms | EMA=32351ms | next=10000ms
+[ConsensusEngine] Round 22 complete in 158ms
+
+[ConsensusEngine] ========== ROUND 23 ==========
+[SharedBuffer] NACK (Round Bottom/Failure) | Called POST /api/mempool/requeue for batchId=4 | Status=200
+[ConsensusEngine] Captured 1 txs for round 23
+[Phase 1] Value Propose — round=23
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=6
+[Phase 1] ? ELECTED AS PROPOSER (weight=6)
+[Phase 1] Using 1 valid transactions from captured batch.
+[Phase 1] Proposed block: [Block #23 | txs=1 | hash=c4dda34d]
+[Phase 2] Pre-Validation — collecting proposals...
+[NetworkEngine] Certificate COMPLETE! round=23 hash=00000000 weight=686
+[SharedBuffer] CertificateEvent | round=23 | isBottom=true | flushing 1 transactions
+[SharedBuffer] Staging area flushed.
+[SharedBuffer] Fetching next batch via HTTP...
+[SharedBuffer] Batch 6 ready: 1 transactions staged.
+[Phase 2] Collected 2 proposals.
+[Phase 2] Best_Proposal = 0dffa733
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=182
+[Phase 3] ? ELECTED AS VOTER (weight=182) — voting for: 0dffa733
+[Phase 4] Resolving Filter — counting soft votes...
+[Phase 4] Certificate interrupt — advancing to Phase 6.
+[Phase 5] BBA* Micro-Loop — initial choice: BOTTOM
+[Phase 5] Certificate interrupt — BBA* complete.
+[Phase 6] Halting Condition — finalWinner=BOTTOM
+[Phase 6] CertifyVote gossiped (weight=173)
+[Phase 6] Waiting for BlockCertificate...
+[Phase 6] Certificate: [Certificate round=23 | hash=00000000 | weight=688 | votes=4]
+[Phase 6] BOTTOM round — creating empty block.
+[StateEngine] Block applied: [Block #23 | txs=0 | hash=f6dfcda3]
+[EventGateway] ? TXN_REJECTED(Timeout) | txId=35166f450d7635cf4235e759fcf93a6682aea8035fb6fc524607c9fbe96dcb2b
+[EventGateway] Timeout batch: fired=1 | deduplicated=0
+[Phase 6] Round 23 complete. Advancing to round 24.
+[EMATimeout] Round took 231ms | EMA=22715ms | next=10000ms
+[ConsensusEngine] Round 23 complete in 231ms
+
+[ConsensusEngine] ========== ROUND 24 ==========
+[ConsensusEngine] Captured 1 txs for round 24
+[Phase 1] Value Propose — round=24
+[SharedBuffer] NACK (Round Bottom/Failure) | Called POST /api/mempool/requeue for batchId=6 | Status=200
+[Phase 1] Sortition: myStake=5000 totalStake=30000 weight=0
+[Phase 1] Not selected as proposer this round.
+[Phase 2] Pre-Validation — collecting proposals...
+[Phase 2] Collected 1 proposals.
+[Phase 2] Best_Proposal = 01b41fd5
+[Phase 3] Filter — checking election...
+[Phase 3] Sortition weight=142
+[Phase 3] ? ELECTED AS VOTER (weight=142) — voting for: 01b41fd5
+[Phase 4] Resolving Filter — counting soft votes...
