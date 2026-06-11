@@ -16,6 +16,8 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
+  const [isDepositing, setIsDepositing] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [isStaking, setIsStaking] = useState(false);
   const [isUnstaking, setIsUnstaking] = useState(false);
 
@@ -59,6 +61,56 @@ export default function Dashboard() {
   const parseAmount = (amount) => {
     const numericAmount = Number(amount);
     return Number.isFinite(numericAmount) ? numericAmount : 0;
+  };
+
+  const handleDeposit = async (amount) => {
+    const numericAmount = parseAmount(amount);
+    if (numericAmount <= 0) {
+      toast.error("Enter a valid deposit amount");
+      return false;
+    }
+
+    setIsDepositing(true);
+    try {
+      const result = await apiRequest('/api/v1/transactions/deposit', {
+        method: 'POST',
+        body: JSON.stringify({ amount: numericAmount })
+      });
+
+      toast.success(result?.message || "Deposit request submitted");
+      await fetchDashboardData();
+      return true;
+    } catch (err) {
+      toast.error(err.message || "Deposit request failed");
+      return false;
+    } finally {
+      setIsDepositing(false);
+    }
+  };
+
+  const handleWithdraw = async (amount) => {
+    const numericAmount = parseAmount(amount);
+    if (numericAmount <= 0) {
+      toast.error("Enter a valid withdraw amount");
+      return false;
+    }
+
+    setIsWithdrawing(true);
+    try {
+      const result = await apiRequest('/api/v1/transactions/withdraw', {
+        method: 'POST',
+        body: JSON.stringify({ amount: numericAmount })
+      });
+
+      toast.success(result?.message || "Withdraw request submitted");
+      await fetchDashboardData();
+      return true;
+    } catch (err) {
+      toast.error(err.message || "Withdraw request failed");
+      return false;
+    } finally {
+      setIsWithdrawing(false);
+    }
   };
 
   const handleStake = async (amount) => {
@@ -146,8 +198,12 @@ export default function Dashboard() {
         profile={profile} 
         isToggling={isToggling} 
         onToggleValidator={handleToggleValidator} 
+        isDepositing={isDepositing}
+        isWithdrawing={isWithdrawing}
         isStaking={isStaking}
         isUnstaking={isUnstaking}
+        onDeposit={handleDeposit}
+        onWithdraw={handleWithdraw}
         onStake={handleStake}
         onUnstake={handleUnstake}
       />

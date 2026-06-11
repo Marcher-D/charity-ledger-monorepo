@@ -4,8 +4,12 @@ export default function WalletPanel({
   profile,
   isToggling,
   onToggleValidator,
+  isDepositing,
+  isWithdrawing,
   isStaking,
   isUnstaking,
+  onDeposit,
+  onWithdraw,
   onStake,
   onUnstake
 }) {
@@ -18,9 +22,21 @@ export default function WalletPanel({
   const stakedBalance = Number(profile.stakedBalance) || 0;
   const requestedAmount = Number(amount);
   const hasValidAmount = Number.isFinite(requestedAmount) && requestedAmount > 0;
-  const actionInProgress = isStaking || isUnstaking || isToggling;
+  const actionInProgress = isDepositing || isWithdrawing || isStaking || isUnstaking || isToggling;
+  const canDeposit = hasValidAmount && !actionInProgress;
+  const canWithdraw = hasValidAmount && requestedAmount <= availableBalance && !actionInProgress;
   const canStake = hasValidAmount && requestedAmount <= availableBalance && !actionInProgress;
   const canUnstake = hasValidAmount && requestedAmount <= stakedBalance && !profile.activeValidator && !actionInProgress;
+
+  const handleDeposit = async () => {
+    const success = await onDeposit(amount);
+    if (success) setAmount('');
+  };
+
+  const handleWithdraw = async () => {
+    const success = await onWithdraw(amount);
+    if (success) setAmount('');
+  };
 
   const handleStake = async () => {
     const success = await onStake(amount);
@@ -62,6 +78,24 @@ export default function WalletPanel({
 
         <button
           type="button"
+          onClick={handleDeposit}
+          disabled={!canDeposit}
+          className="px-4 py-2 bg-brand-success/10 text-brand-success border border-brand-success/50 rounded-lg text-sm font-bold hover:bg-brand-success/20 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isDepositing ? 'Depositing...' : 'Deposit'}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleWithdraw}
+          disabled={!canWithdraw}
+          className="px-4 py-2 bg-brand-panel text-brand-creamMuted border border-brand-line rounded-lg text-sm hover:border-brand-success/50 hover:text-brand-cream disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isWithdrawing ? 'Withdrawing...' : 'Withdraw'}
+        </button>
+
+        <button
+          type="button"
           onClick={handleStake}
           disabled={!canStake}
           className="px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/50 rounded-lg text-sm font-bold hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -82,12 +116,12 @@ export default function WalletPanel({
         <button
           type="button"
           onClick={onToggleValidator}
-          disabled={isToggling || isStaking || isUnstaking}
+          disabled={actionInProgress}
           className={`px-4 py-2 rounded-lg text-sm lg:ml-auto border transition-colors ${
             profile.activeValidator
               ? 'bg-red-500/10 text-red-500 border-red-500/50 hover:bg-red-500 hover:text-brand-cream'
               : 'bg-brand-success/10 text-brand-success border-brand-success/50 hover:bg-brand-success hover:text-brand-dark'
-          } ${isToggling || isStaking || isUnstaking ? 'opacity-50 cursor-not-allowed' : ''}`}
+          } ${actionInProgress ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           {isToggling ? 'Processing...' : (profile.activeValidator ? 'Leave Validator' : 'Become Validator')}
         </button>
