@@ -9,9 +9,13 @@ Dark-styled to blend into a dark slide deck. Companion to BACKEND_PRESENTATION.m
 @startuml
 skinparam backgroundColor #16181d
 skinparam defaultFontColor #e8e6e3
-skinparam defaultFontSize 15
+skinparam defaultFontSize 16
 skinparam ArrowColor #4ade80
-skinparam ArrowFontColor #9ca3af
+skinparam ArrowFontColor #b9c2cc
+skinparam ArrowThickness 1.5
+skinparam shadowing false
+skinparam nodesep 60
+skinparam ranksep 70
 skinparam rectangle {
   BackgroundColor #1f2937
   BorderColor #4ade80
@@ -28,25 +32,29 @@ skinparam queue {
   FontColor #e8e6e3
 }
 
-rectangle "Frontend\n(React + nginx)" as FE
+rectangle "Frontend" as FE
 rectangle "**BACKEND**\nSpring Boot" as BE #234034
 database "PostgreSQL\n(web truth)" as DB
+
+queue "event bus" as EV
 rectangle "Orchestrator" as ORCH
-queue "mempool queue" as MQ1
-queue "event bus queue" as MQ2
-rectangle "Mempool service" as MEM
-collections "node-0 … node-N\n(one per user/campaign)\n(chain truth)" as NODES
+queue "mempool" as MEM
+
+rectangle "**node-0 ... node-N**\none per user / campaign\nuser keys live HERE\n(chain truth)" as NODES
 
 FE -right-> BE : REST (JWT)
-BE -right-> DB : balances, campaigns,\ntransaction records
-BE -down-> ORCH : "spawn a node for\nthis new user"
-ORCH -right-> NODES : docker run
-BE -down-> MQ1 : signed transaction JSON
-MQ1 -right-> MEM
-MEM -up-> NODES : nodes pull batches
-NODES .up.> BE : sign requests answered\n(user keys stay in nodes)
-NODES -left-> MQ2 : VALIDATED / REJECTED /\nBLOCK_FINALIZED (reward)
-MQ2 -up-> BE : settle outcomes
+BE -right-> DB
+
+BE -down-> ORCH : 1. create node\nfor new user
+ORCH -down-> NODES : docker run
+
+BE -down-> MEM : 2. signed\ntransaction
+MEM -down-> NODES : nodes\npull work
+
+NODES -up-> EV : 3. VALIDATED / REJECTED\n+ proposer reward
+EV -up-> BE : settle\noutcomes
+
+BE .down.> NODES : "sign this"
 @enduml
 ```
 
@@ -57,6 +65,9 @@ MQ2 -up-> BE : settle outcomes
 skinparam backgroundColor #16181d
 skinparam defaultFontColor #e8e6e3
 skinparam ArrowColor #4ade80
+skinparam NoteBackgroundColor #253041
+skinparam NoteBorderColor #f59e0b
+skinparam NoteFontColor #e8e6e3
 skinparam state {
   BackgroundColor #1f2937
   BorderColor #4ade80
@@ -86,6 +97,10 @@ end note
 skinparam backgroundColor #16181d
 skinparam defaultFontColor #e8e6e3
 skinparam ArrowColor #4ade80
+skinparam NoteBackgroundColor #253041
+skinparam NoteBorderColor #f59e0b
+skinparam NoteFontColor #e8e6e3
+skinparam actorBackgroundColor #1f2937
 skinparam sequence {
   ParticipantBackgroundColor #1f2937
   ParticipantBorderColor #4ade80
@@ -97,9 +112,9 @@ skinparam sequence {
 actor Donor
 participant "Backend" as BE
 participant "Donor's own node\n(holds the private key)" as NODE
-queue "mempool\nqueue" as Q1
-collections "Validators\n(BFT consensus)" as VAL
-queue "event bus\nqueue" as Q2
+participant "mempool\nqueue" as Q1
+participant "Validators\n(BFT consensus)" as VAL
+participant "event bus\nqueue" as Q2
 
 Donor -> BE : Donate 100
 BE -> BE : lock funds\navailable→pending\nrecord PENDING
