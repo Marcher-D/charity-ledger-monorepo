@@ -113,7 +113,7 @@ actor Donor
 participant "Backend" as BE
 participant "Donor's own node\n(holds the private key)" as NODE
 participant "mempool\nqueue" as Q1
-participant "Validators\n(BFT consensus)" as VAL
+participant "Validators\n(PPoS consensus)" as VAL
 participant "event bus\nqueue" as Q2
 
 Donor -> BE : Donate 100
