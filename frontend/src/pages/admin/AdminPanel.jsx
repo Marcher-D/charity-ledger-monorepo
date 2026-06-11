@@ -55,6 +55,8 @@ export default function AdminPanel() {
           </span>
         </div>
         
+        {/* Mobile: bảng 4 cột rộng hơn màn hình điện thoại → cuộn ngang trong khung */}
+        <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-brand-line text-sm">
           <thead className="bg-brand-card">
             <tr>
@@ -86,6 +88,7 @@ export default function AdminPanel() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

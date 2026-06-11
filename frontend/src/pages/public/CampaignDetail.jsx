@@ -4,14 +4,18 @@ import { apiRequest } from '../../services/api';
 import toast from 'react-hot-toast';
 import DonateModal from '../../components/campaign/DonateModal';
 import { isAdminRole } from '../../services/auth';
+import { useWallet } from '../../context/WalletContext';
 
 export default function CampaignDetail() {
   const { id } = useParams(); // [BỔ SUNG] Lấy ID chiến dịch từ thanh địa chỉ trình duyệt
-  
+
   // [BỔ SUNG] Khởi tạo State chứa dữ liệu Backend
   const [campaign, setCampaign] = useState(null);
   const [donors, setDonors] = useState([]);
-  const [profile, setProfile] = useState(null);
+  // Số dư ví từ WalletContext: nạp tiền ở Dashboard xong quay lại đây là
+  // form quyên góp thấy số mới trong ≤5 giây, không cần F5 (null nếu Admin
+  // hoặc chưa đăng nhập).
+  const { profile } = useWallet();
   const [loading, setLoading] = useState(true);
 
   // [BỔ SUNG] Hàm tải dữ liệu
@@ -22,22 +26,9 @@ export default function CampaignDetail() {
         apiRequest(`/api/v1/campaigns/${id}`),
         apiRequest(`/api/v1/campaigns/${id}/donors`)
       ]);
-      
+
       setCampaign(campaignData);
       setDonors(donorsData);
-
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        try {
-          const profileData = await apiRequest('/api/v1/users/me');
-          setProfile(profileData);
-        } catch (profileError) {
-          console.error("Cannot load donation profile:", profileError);
-          setProfile(null);
-        }
-      } else {
-        setProfile(null);
-      }
     } catch (err) {
       console.error("Data loading error:", err);
       toast.error("Cannot load campaign information!");
@@ -84,9 +75,9 @@ export default function CampaignDetail() {
           style={{ backgroundImage: `url(${campaign.coverImageUrl || 'https://via.placeholder.com/1200x400'})` }}
         ></div>
         
-        <div className="p-8">
-          <div className="flex justify-between items-start mb-4">
-            <h1 className="text-3xl font-bold text-brand-cream">{campaign.title}</h1>
+        <div className="p-5 sm:p-8">
+          <div className="flex flex-wrap justify-between items-start gap-2 mb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-brand-cream">{campaign.title}</h1>
             <span className="px-3 py-1 text-sm font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
               {campaign.status}
             </span>
@@ -95,7 +86,7 @@ export default function CampaignDetail() {
             {campaign.description}
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12">
             {/* Progress Area */}
             <div>
               <div className="flex justify-between text-sm text-brand-creamMuted mb-2">
@@ -130,6 +121,8 @@ export default function CampaignDetail() {
       {/* Donor List */}
       <h2 className="text-xl font-bold text-brand-cream mb-4">On-Chain Donors</h2>
       <div className="bg-brand-card rounded-xl shadow-sm border border-brand-line overflow-hidden">
+        {/* Mobile: bảng 4 cột rộng hơn màn hình điện thoại → cuộn ngang trong khung */}
+        <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-brand-line text-sm">
           <thead className="bg-brand-panel">
             <tr>
@@ -161,6 +154,7 @@ export default function CampaignDetail() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

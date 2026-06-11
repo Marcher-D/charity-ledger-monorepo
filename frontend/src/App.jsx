@@ -13,6 +13,7 @@ import Dashboard from './pages/user/Dashboard';
 import CreateCampaign from './pages/user/CreateCampaign';
 import AdminPanel from './pages/admin/AdminPanel';
 import { isAdminRole } from './services/auth';
+import { WalletProvider } from './context/WalletContext';
 
 // =========================================================================
 // [SỬA ĐỔI] CHỐT CHẶN BẢO MẬT PHÂN QUYỀN HAI CHIỀU (PROTECTED ROUTE)
@@ -107,6 +108,7 @@ export default function App() {
         }} 
       />
       
+      <WalletProvider isLoggedIn={isLoggedIn} authVersion={authVersion}>
       <Routes>
         <Route element={<MainLayout isLoggedIn={isLoggedIn} onLogout={handleLogoutSuccess} authVersion={authVersion} />}>
           
@@ -138,6 +140,7 @@ export default function App() {
 
         </Route>
       </Routes>
+      </WalletProvider>
     </Router>
   );
 }

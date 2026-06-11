@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { apiRequest } from '../../services/api'; // [BỔ SUNG] Import ống dẫn API
+import { useWallet } from '../../context/WalletContext';
 
 export default function DonateModal({ availableBalance = 0, campaignId, onDonateSuccess }) {
+  const { refreshWallet } = useWallet();
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,6 +28,7 @@ export default function DonateModal({ availableBalance = 0, campaignId, onDonate
       toast.success("Quyên góp thành công! Giao dịch đang chờ mạng PPoS xác thực.");
       setAmount('');
       setNote('');
+      refreshWallet(); // Số dư bị khóa escrow ngay — kéo số mới về liền
       if (onDonateSuccess) onDonateSuccess(); // Gọi hàm load lại trang để cập nhật thanh tiến trình
 
     } catch (err) {

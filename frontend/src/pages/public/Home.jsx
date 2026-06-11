@@ -33,12 +33,12 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="w-full min-h-[calc(100vh-5rem)] bg-brand-dark px-6 py-16 flex flex-col justify-center">
-      <div className="max-w-5xl mx-auto w-full space-y-16">
+    <div className="w-full min-h-[calc(100vh-5rem)] bg-brand-dark px-4 sm:px-6 py-10 sm:py-16 flex flex-col justify-center">
+      <div className="max-w-5xl mx-auto w-full space-y-10 sm:space-y-16">
         
         {/* Khối Tiêu Đề Trung Tâm (Giữ nguyên) */}
         <div className="text-center space-y-4 max-w-2xl mx-auto">
-          <h1 className="text-5xl md:text-6xl font-bold leading-tight tracking-normal text-brand-cream">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold leading-tight tracking-normal text-brand-cream">
             Transparentizing <br/>
             <span className="text-emerald-400">Charitable fund flows.</span>
           </h1>

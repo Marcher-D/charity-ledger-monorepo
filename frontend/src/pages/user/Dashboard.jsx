@@ -7,12 +7,15 @@ import { useNavigate } from 'react-router-dom'; // [BỔ SUNG] Công cụ chuy�
 import { isAdminRole } from '../../services/auth';
 
 // Nhúng 2 Component con vào
-import WalletPanel from '../../components/user/WalletPanel'; 
+import WalletPanel from '../../components/user/WalletPanel';
 import TransactionHistory from '../../components/user/TransactionHistory';
+import { useWallet } from '../../context/WalletContext';
 
 export default function Dashboard() {
   const navigate = useNavigate(); // [BỔ SUNG] Khởi tạo điều hướng
-  const [profile, setProfile] = useState(null);
+  // Số dư ví đọc từ WalletContext (nguồn duy nhất, tự làm mới 5s);
+  // Dashboard chỉ tự quản lý danh sách giao dịch.
+  const { profile, refreshWallet } = useWallet();
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStaking, setIsStaking] = useState(false);
@@ -22,15 +25,13 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [profileData, txData] = await Promise.all([
-        apiRequest('/api/v1/users/me'), 
-        apiRequest('/api/v1/transactions/me?limit=5') 
-      ]);
-      setProfile(profileData);
+      const txData = await apiRequest('/api/v1/transactions/me?limit=5');
       // The backend returns the full history (the limit query param is not
       // implemented server-side); keep the dashboard to the most recent ones.
       const txList = Array.isArray(txData) ? txData : txData.items || [];
       setTransactions(txList.slice(0, 10));
+      // Kéo luôn số dư mới — các hành động ví gọi hàm này sau khi thành công.
+      await refreshWallet();
     } catch (err) {
       console.error("Dashboard error:", err);
       toast.error("Cannot load wallet data!");

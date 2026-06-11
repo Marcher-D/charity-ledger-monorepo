@@ -65,7 +65,8 @@ export default function WalletPanel({
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-3">
+      {/* Mobile: lưới 2 cột thay vì 4 nút xếp chồng kín màn hình */}
+      <div className="grid grid-cols-2 lg:flex gap-3">
         <input
           type="number"
           min="0.01"
@@ -73,7 +74,7 @@ export default function WalletPanel({
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
           placeholder="Amount TCL"
-          className="w-full lg:w-44 bg-brand-dark/60 border border-brand-line rounded-lg px-4 py-2 text-sm text-brand-cream outline-none focus:border-brand-success/70"
+          className="col-span-2 w-full lg:w-44 bg-brand-dark/60 border border-brand-line rounded-lg px-4 py-2 text-sm text-brand-cream outline-none focus:border-brand-success/70"
         />
 
         <button
