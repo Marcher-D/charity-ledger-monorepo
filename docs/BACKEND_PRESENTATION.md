@@ -1,251 +1,261 @@
 # Backend Presentation Plan — Transparent Charity Ledger
 
-Target: ~15–20 minutes talk + 5 min demo + Q&A.
-Your part: `backend-api/` (Spring Boot). Teammates cover frontend, blockchain core, Docker.
-Golden thread to repeat throughout: **"The backend is a trusted mirror: PostgreSQL is the
-source of truth for the *web experience*, the blockchain is the source of truth for *money
-movement* — and the backend's whole job is keeping the two honest with each other."**
+Target: ~15–20 minute talk + Q&A. Slides/whiteboard only — no source code.
+Your part: the backend. Teammates cover frontend, blockchain core, Docker.
+
+**The one sentence to repeat until everyone can say it back:**
+> The backend is a *trusted mirror*: PostgreSQL is the source of truth for the web
+> experience, the blockchain is the source of truth for money movement — and the
+> backend's whole job is keeping the two honest with each other.
 
 ---
 
-## 1. Opening — what the backend is (2 min)
+## 1. What the backend is (2 min)
 
-Draw / show this and keep it on screen as your anchor:
+Anchor diagram — draw it once, keep it visible the whole talk:
 
 ```
-Browser ──> frontend(:3000) ──> BACKEND(:8080) ──> PostgreSQL  (web truth)
-                                   │  ▲
-              spawn_node (HTTP)    │  │ TXN_VALIDATED / TXN_REJECTED /
-                                   ▼  │ BLOCK_FINALIZED (proposer reward)
-                            orchestrator ── docker run ──> node-0..node-N
-                                   │                  ▲  sign (HTTP :7100)
-        signed tx JSON             ▼                  │
-        RabbitMQ mempool_queue ──> mock mempool <── nodes poll batches
-        RabbitMQ event_bus_queue <─ every node      (chain truth)
+Browser ──> Frontend ──> BACKEND ──> PostgreSQL          (web truth)
+                            │  ▲
+         "create a node"    │  │  outcomes & rewards
+                            ▼  │
+                      Orchestrator ──> node-0 … node-N
+                            │               ▲  "sign this"
+        signed transactions ▼               │
+        ──── message queue ──> mempool <── nodes pull work
+        <─── message queue ─── every node announces results   (chain truth)
 ```
 
-Say: the backend has **exactly three jobs**:
-1. Classic web app: auth, users, campaigns, REST API (Spring Boot + PostgreSQL).
-2. **Outbound**: turn user actions into correctly signed on-chain transactions.
-3. **Inbound**: listen to what consensus actually decided and settle balances accordingly.
+The backend has **exactly three jobs**:
+1. **Web platform** — accounts, login, campaigns, dashboards (a classic REST API over a database).
+2. **Outbound** — turn a button click into a *correctly signed* blockchain transaction.
+3. **Inbound** — listen to what consensus actually decided, and settle balances accordingly.
 
-Tech stack one-liner: Spring Boot 3 / Spring Security (JWT), PostgreSQL + Flyway
-migrations, RabbitMQ (two one-way links), BouncyCastle (Ed25519), Docker.
-
----
-
-## 2. Domain model — the escrow design (3 min)
-
-Open `backend-api/src/main/resources/db/migration/` (V1→V3 tell the story of the project).
-
-Key tables (show in psql or just on a slide):
-
-| Table | Why it exists |
-|---|---|
-| `accounts` / `users` | login identity vs. wallet identity; users carry `wallet_address`, `public_key`, `node_index` — the link to *their own* blockchain node |
-| `campaigns` | also have `public_key` + `node_index` — a campaign IS an on-chain account |
-| `transactions_cache` | every money action, with `tx_hash` = the on-chain txId (the correlation key) and a status machine: `PENDING → SUCCESS / FAILED` |
-| `genesis_nodes` | the 5 bootstrap validators (idempotency marker — restart-safe) |
-| `processed_rewards` | dedup for proposer rewards (more in §6) |
-| `onchain_sync` | the "chain epoch" the backend last reconciled against (§7) |
-
-**The escrow model** (this is the part people remember):
-every user has three balances — `available`, `pending`, `staked`.
-When you donate 100, the backend does NOT subtract 100 from available and call it done.
-It *moves 100 from available → pending* and writes a PENDING row. Money in `pending` is
-locked: you can't spend it twice while consensus is still deciding. Only a chain event
-moves it out of pending — forward (SUCCESS) or back (FAILED = refund).
-This is a mini two-phase commit between Postgres and the blockchain.
-
-Code to show: `transactions/TransactionService.java` — pick ONE method (donate) and walk
-it: validate → lock funds → build canonical tx → get signature → publish → return PENDING.
+Everything else in the talk is just these three jobs in detail.
 
 ---
 
-## 3. Security (3 min)
+## 2. Identity architecture: one person = two identities (2 min)
 
-File: `security/SecurityConfig.java`, `security/JwtAuthenticationFilter.java`.
-
-- **Stateless JWT**: no sessions; every request carries `Authorization: Bearer`. The filter
-  validates and loads the account; roles split USER vs ADMIN routes
-  (`/api/v1/admin/**` → ADMIN only; campaign approval lives there).
-- **401 vs 403 done right**: custom `AuthenticationEntryPoint` (not logged in → 401 JSON)
-  and `AccessDeniedHandler` (logged in, wrong role → 403 JSON). Worth one sentence: Spring's
-  default error dispatch re-enters the security chain and can rewrite a 403 into a 401 —
-  we write the 403 response directly to avoid that.
-- **Battle scars you can tell as stories** (each was a real bug found during live testing):
-  - A *stale token* (from before a DB reset) used to kill even the public register endpoint
-    → the filter now treats any broken/orphaned token as "anonymous" instead of erroring.
-  - Browsers send an `Origin` header on every POST → the localhost-only CORS whitelist
-    403'd every device on the WiFi except the host. GETs worked, POSTs didn't — that
-    asymmetry made it maddening to debug. Now origin *patterns* (default `*`, Bearer auth,
-    no cookies, so this is safe).
-
-**The most important security claim of the whole design** (say it slowly):
-> The backend can never spend a user's money on its own, because it never holds user
-> private keys. Every user transaction is signed by that user's own node.
-
----
-
-## 4. The signing architecture — two paths (4 min, the technical heart)
-
-Files: `messaging/NodeSignerClient.java`, `messaging/SystemKeySigner.java`,
-`messaging/OnChainTransactionMessage.java`.
-
-1. **User-signed path** (DONATE / STAKE / UNSTAKE / WITHDRAW):
-   backend builds the transaction *fields*, then calls the **sender's own node**
-   (`http://node-<idx>:7100/api/signer/sign`). The node derives its key, computes the
-   canonical txId, signs, returns `{txId, signature}`. The private key never leaves the
-   node container. (Retry loop because a freshly spawned node's JVM needs a few seconds.)
-
-2. **System-signed path** (DEPOSIT only):
-   deposits create money out of thin air (the faucet), so the *chain's system account* is
-   the sender. The backend holds that one keypair — derived deterministically from the
-   seed `SYSTEM_DEPOSIT_KEY_V1`, same derivation as the chain (sha256 → Ed25519). Show
-   `SystemKeySigner`: it reproduces the chain's canonical signable string **byte for byte**:
-
-   ```
-   type|senderPubKey|receiverPubKey|%.2f amount|firstValid|lastValid|timestamp|note
-   txId = sha256Hex(that string);  signature = Ed25519 over its UTF-8 bytes
-   ```
-
-   One wrong byte (we standardized on `%.2f`, US locale) and the chain rejects the
-   signature. There's a unit test pinning a known txId/signature vector
-   (`SystemKeySignerTest`) so canonicalization drift fails the build, not the demo.
-
-Type mapping table (good slide):
-
-| Web action | On-chain type | Sender signs |
+| | Web identity | Chain identity |
 |---|---|---|
-| Deposit | DEPOSIT | backend (system key) |
-| Donate | DONATE (2% fee → block proposer) | user's node |
+| What it is | email + password → JWT session | Ed25519 keypair + wallet address |
+| Where it lives | backend database | **that user's own node container** |
+| What it proves | "I may use the website" | "I authorize moving my money" |
+
+Key design decision to present proudly:
+- **When a user registers, the backend asks the orchestrator to launch a brand-new
+  blockchain node just for them.** That node holds their private key. Campaigns get the
+  same treatment when approved — a campaign *is* an on-chain account.
+- The backend stores only the **public** half (address, public key, node number) to know
+  *who to ask* for signatures — never the private key.
+
+> Security headline: the backend cannot spend anyone's money, even if fully compromised,
+> because it has nothing to sign with. (One exception in §4.)
+
+---
+
+## 3. The escrow model: three balances, one state machine (3 min)
+
+Every user's money is split into three buckets:
+
+```
+AVAILABLE  ── spendable now
+PENDING    ── locked: an action is awaiting consensus
+STAKED     ── locked into validator stake
+```
+
+Every money action follows the same lifecycle — this is the core process of the backend:
+
+```
+user clicks "Donate 100"
+        │
+   1. validate (enough available? campaign open?)
+   2. move 100: AVAILABLE → PENDING          ← money is now locked
+   3. record the action as PENDING
+   4. send the signed transaction to the chain
+        │
+        ├── chain says VALIDATED → PENDING → applied (campaign +100, status SUCCESS)
+        └── chain says REJECTED  → PENDING → refunded back to AVAILABLE (status FAILED)
+```
+
+Why this matters (say it as a claim): **the backend never shows money in two places at
+once, and never loses money to a timing window.** While consensus is deciding, the funds
+are frozen — you can't double-spend them through the website. It's effectively a
+two-phase commit between the database and the blockchain.
+
+---
+
+## 4. The signing architecture: who signs what (4 min — the technical heart)
+
+Two signing paths, one rule: **every transaction is signed by its actual sender.**
+
+```
+USER ACTIONS (donate / stake / unstake / withdraw)
+  backend builds the transaction fields
+      → asks the SENDER'S OWN NODE to sign it (private key never leaves the node)
+      → publishes the signed transaction
+
+SYSTEM ACTION (deposit only)
+  deposits mint money into the chain, so the sender is the chain's SYSTEM ACCOUNT
+      → the backend holds that one system keypair and signs deposits itself
+```
+
+Two points to make:
+
+1. **Canonical agreement.** The backend and the chain must agree *byte for byte* on what
+   gets signed: a fixed field order, a fixed number format (2 decimals), a hash of that
+   string as the transaction ID. If even one byte differs, the chain rejects the
+   signature. This contract is pinned by unit tests so it can't silently drift.
+
+2. **Action mapping** (good slide):
+
+| Web action | On-chain transaction | Signed by |
+|---|---|---|
+| Deposit | DEPOSIT (system → user) | backend (system key) |
+| Donate | DONATE (user → campaign, 2% fee to block proposer) | user's node |
 | Stake / Unstake | STAKE / UNSTAKE | user's node |
-| Withdraw | WITHDRAW (receiver = system) | user's node |
-| Campaign approval | *off-chain* (spawns campaign node, settles immediately) | — |
+| Withdraw | WITHDRAW (user → system) | user's node |
+| Campaign approval | no chain transaction — spawns the campaign's node, settles instantly | — |
 
 ---
 
-## 5. Outbound messaging — backend → chain (2 min)
+## 5. The two message highways (2 min)
 
-Files: `messaging/RabbitMempoolPublisher.java`, `messaging/RabbitConfig.java`.
+Both are one-way queues over the same broker — decoupling is the point:
 
-- The published message is the **exact JSON the chain's `Transaction` class deserializes** —
-  no translation layer on the node side.
-- Queues are **classic durable** on purpose: the chain's `EventGateway` declares them that
-  way, and RabbitMQ hard-fails (`PRECONDITION_FAILED`) if two parties declare the same
-  queue with different types. (Real bug: backend originally declared *quorum* queues —
-  events silently died.)
-- The on-chain `txId` is stored as `tx_hash` on the PENDING row → this is how the answer
-  finds its question later.
-
----
-
-## 6. Inbound events — chain → backend, and the duplicate-storm problem (3 min)
-
-Files: `messaging/OnChainEventListener.java`, `messaging/OnChainEventService.java`.
-
-Three event types arrive on `event_bus_queue`:
-- `TXN_VALIDATED {txId,...}` → find row by tx_hash → settle SUCCESS (apply per-type:
-  credit deposit, move stake, bump campaign raised…)
-- `TXN_REJECTED {txId, reason}` → FAILED + **refund** the pending lock
-- `BLOCK_FINALIZED {round, blockHash, proposer, rewardAmount}` → credit the proposer
-  2% of that round's donations. **No block data is transferred or stored** — it's a
-  reward notification, not block sync.
-
-**The problem to highlight**: *every* node publishes these events — 16 nodes = 16 copies
-of everything (plus re-publishes when a node replays history after a restart). Idempotency
-is therefore layered:
-1. deterministic eventId (UUID derived from txId+type) + in-memory seen-set,
-2. the `status == PENDING` guard — a settled row can't settle twice,
-3. `processed_rewards` table — DB-level, restart-proof dedup for reward credits
-   (one row per blockHash; genesis proposers map to no user → logged and skipped).
-
-Punchline: "we don't try to prevent duplicates — we make every consumer idempotent."
+- **Outbound (backend → chain):** the backend drops the signed transaction JSON onto a
+  queue; a mempool service feeds it to nodes. The backend doesn't know or care *which*
+  node picks it up — nodes can restart freely without losing submissions.
+- **Inbound (chain → backend):** nodes announce three kinds of facts:
+  - `TXN_VALIDATED` — "this transaction is final" → settle SUCCESS
+  - `TXN_REJECTED` — "this transaction failed/expired" → settle FAILED + refund
+  - `BLOCK_FINALIZED` — "round done; this proposer earned this reward" → credit 2% of the
+    round's donations to the proposer. **No block data crosses this boundary** — the
+    backend mirrors outcomes, it does not sync the chain.
 
 ---
 
-## 7. Resilience — restarts are a feature (3 min)
+## 6. The duplicate-storm problem (3 min — best "war story" section)
 
-Files: `config/GenesisNodeInitializer.java`, `config/ChainStateReconciler.java`,
-`transactions/PendingTransactionExpiryJob.java`.
+Here's the catch nobody sees coming: **every node announces every event.**
+16 nodes online = 16 copies of "transaction X validated". After a node restarts and
+replays history, it announces everything *again*.
 
-The consensus core cannot safely resume a chain that was killed mid-round (votes live in
-RAM). Design decision: **the chain is ephemeral, PostgreSQL is durable.**
+The backend's answer is layered idempotency — "don't prevent duplicates, make every
+consumer immune to them":
 
-On every startup, in order:
-1. Orchestrator wipes chain files, bumps the **chain epoch**, respawns every known node.
-2. `GenesisNodeInitializer` (idempotent, `genesis_nodes` marker): first boot only, spawns
-   the 5 funded validators.
-3. `ChainStateReconciler` sees `epoch != last reconciled` → **replays every user's balance
-   onto the fresh chain**: system DEPOSIT of (available+pending+staked), wait, then
-   node-signed re-STAKE of the staked part. Marks the epoch *first* so a crash mid-replay
-   can't double-fund.
-4. `PendingTransactionExpiryJob` (scheduled): any PENDING row older than 15 min (its
-   in-flight message died with a shutdown) → FAILED + refund. No stuck money, ever.
+```
+Layer 1: deterministic event IDs        → same fact ⇒ same ID ⇒ recognizable repeat
+Layer 2: the PENDING guard              → a settled record cannot settle twice
+Layer 3: rewards ledger in the database → one reward credit per block, survives restarts
+```
 
-Demo-able claim: "you can `docker compose down` mid-donation, come back up, and the
-worst case is that donation auto-refunds after 15 minutes — balances never corrupt."
+Audience takeaway: in distributed systems, *exactly-once delivery doesn't exist* —
+exactly-once **effect** is engineered at the consumer.
 
 ---
 
-## 8. Live demo script (5 min — rehearse once!)
+## 7. Restart resilience: the chain is ephemeral, the database is durable (3 min)
 
-Pre-demo: stack started (`docker compose up -d`), wait ~1 min, have two terminals ready.
+Hard constraint inherited from BFT consensus: a chain killed mid-vote cannot safely
+resume (votes live in memory). Instead of fighting it, the design embraces it:
 
-1. Register a user in the browser → terminal: `docker ps | grep node-` — **a new node
-   container appeared for that user** (audience-visible cause and effect).
-2. Deposit 1000 → dashboard shows PENDING → flips to SUCCESS in ~10–30 s.
-   Meanwhile show `docker logs -f charity_backend` — point at the
-   `TXN_VALIDATED` consumption line.
-3. Donate to a campaign → show campaign `currentRaised` going up, and (in logs) the
-   `BLOCK_FINALIZED` reward line ("Proposer reward 2.00 for … — skipped (genesis)").
-4. Peek at the database:
-   `docker exec -it charity_db psql -U admin -d charity_db`
-   → `SELECT type, status, amount, tx_hash FROM transactions_cache ORDER BY created_at DESC LIMIT 5;`
-5. (If time, the crowd-pleaser) `docker stop node-2` → donate again → still settles
-   (4 of 5 validators ≥ 68%) → `docker start node-2` → show it catch up in its logs.
+**Every startup runs this sequence:**
 
-Fallback if live demo is risky: screen-record steps 1–3 beforehand and narrate.
+```
+1. wipe chain state, start a FRESH chain (round 0), bump the "chain epoch" counter
+2. relaunch one node per known user/campaign
+3. backend notices the new epoch  →  REPLAYS every user's balance onto the fresh chain
+       (one system deposit per user, then re-stake what they had staked)
+4. a cleanup job watches for orphans: any action still PENDING after 15 minutes
+       (its message died with the shutdown) is failed and refunded automatically
+```
 
----
+Claims you can make because they were actually tested:
+- Stop everything mid-donation, start again → balances reconcile, the interrupted
+  donation refunds itself. **No corrupted or stuck money.**
+- Stop a *single* node → the rest keep finalizing (4 of 5 validators is enough);
+  when it returns it re-verifies and replays every block it missed, then rejoins.
 
-## 9. Anticipated questions (have these answers ready)
-
-- **"Why RabbitMQ instead of calling the chain directly?"** Decoupling + buffering: the
-  backend doesn't care which node picks the tx up, survives nodes restarting, and gets
-  natural retry semantics. Also matches the chain team's existing mempool/event design.
-- **"Why doesn't the backend store blocks?"** Different sources of truth. The backend only
-  needs transaction *outcomes* and reward notifications; storing blocks would duplicate
-  the chain's job and invite divergence.
-- **"What stops the backend from faking balances?"** On the web side, nothing — it's the
-  trusted mirror (this is honest!). But it cannot *move on-chain money* without the
-  owner's node signing, and anyone can verify on-chain state independently of the backend.
-- **"What if two events conflict / arrive twice?"** Idempotency layers (§6); the PENDING
-  guard means the first settlement wins and the rest are no-ops.
-- **"Why does staking take so long to make me a validator?"** Chain-side rule (R−320
-  stake lookback, flash-loan defense) — backend just reflects it.
-- **"What happens to in-flight transactions on a crash?"** 15-minute expiry job: FAILED +
-  refund (§7).
-- **"Why exactly 5 genesis nodes?"** They're the only pre-funded/pre-staked accounts in
-  the chain's genesis config; everyone else starts at 0 and must deposit → stake.
+The epoch counter is the safety pin: replay happens exactly once per fresh chain, even
+if the backend crashes mid-replay.
 
 ---
 
-## 10. Suggested time budget
+## 8. Security model — honest version (2 min)
+
+- Stateless JWT auth; user vs admin roles; correct 401 (not logged in) vs 403 (wrong role).
+- Defensive lessons learned in real testing (tell one as a story):
+  - a leftover login token from an older database must never block creating a new
+    account → broken tokens are treated as "anonymous", not as errors;
+  - browsers send extra headers on writes that they don't send on reads — our origin
+    rules originally blocked every *other device on the WiFi* from posting anything,
+    while page loads worked fine. Asymmetric failures are the worst to debug.
+- **Trust boundaries, stated honestly:**
+  - what the backend *can* do alone: render any number on the website (it's trusted UI);
+  - what it *cannot* do alone: move on-chain money — that needs the owner's node;
+  - what nobody can do: rewrite settled chain history (BFT supermajority).
+
+---
+
+## 9. Process walkthrough to narrate live (slide with 6 arrows, no code) (2 min)
+
+"The life of a donation" — narrate end to end, pointing at the anchor diagram:
+
+```
+ click Donate(100)
+ → backend locks 100 (available→pending), writes PENDING
+ → backend asks donor's node to sign; publishes signed tx
+ → mempool hands it to validators; consensus finalizes it in a block
+ → every node announces TXN_VALIDATED (+ BLOCK_FINALIZED with the proposer's 2% reward)
+ → backend (deduplicating) settles: pending→gone, campaign +100, proposer +2
+ → dashboard polls and flips PENDING → SUCCESS  (~10–30 seconds total)
+```
+
+If a live demo is allowed, do exactly this in the browser with the dashboard visible —
+no terminals needed. Otherwise a 30-second screen recording of it loops nicely.
+
+---
+
+## 10. Q&A preparation
+
+- **Why a message queue instead of calling the chain directly?**
+  Decoupling and buffering: any node may pick up work, nodes can restart freely, and
+  submissions survive temporary outages. No request/response coupling to consensus timing.
+- **Why doesn't the backend store blocks?**
+  Separation of truth: it needs outcomes, not history. Storing blocks would duplicate
+  the chain's job and create divergence risk.
+- **What stops the backend from faking balances?**
+  On the website — nothing; it's the trusted mirror (be upfront!). But it cannot move
+  on-chain funds without the owner's node, and chain state is independently verifiable.
+- **What if the same event arrives twice / two nodes disagree?**
+  Layered idempotency (§6); consensus guarantees nodes don't disagree on finalized facts.
+- **What happens to money in flight during a crash?**
+  Locked in PENDING, then auto-failed and refunded by the 15-minute cleanup job.
+- **Why do new validators take a while after staking?**
+  Chain rule (stake only counts after a ~320-round lookback window — flash-loan defense);
+  the backend just reflects it.
+- **Why exactly 5 genesis nodes?**
+  They're the only pre-funded accounts at chain genesis; everyone else starts at zero and
+  must deposit → stake, which is exactly the flow the backend implements.
+
+---
+
+## 11. Time budget & closing
 
 | Section | Minutes |
 |---|---|
-| Opening + diagram | 2 |
-| Domain model & escrow | 3 |
-| Security | 3 |
+| What the backend is | 2 |
+| Two identities | 2 |
+| Escrow state machine | 3 |
 | Signing architecture | 4 |
-| Messaging out + in (duplicates) | 4 |
-| Resilience / restart story | 3 |
-| Live demo | 5 |
-| Q&A buffer | 5+ |
+| Message highways + duplicates | 4 |
+| Restart resilience | 3 |
+| Security & trust model | 2 |
+| Life of a donation | 2 |
 
-**Three sentences to end on:**
-1. The backend never holds a user's key — users' own nodes sign everything.
-2. Every balance change is escrowed PENDING until consensus confirms or rejects it.
-3. The whole system is restart-proof: Postgres is durable, the chain is replayable,
-   and stuck money refunds itself.
+**Close with three sentences:**
+1. The backend never holds a user's key — every transaction is signed by its owner's own node.
+2. Every balance change is escrowed as PENDING until consensus confirms or rejects it — no double-spends, no stuck money.
+3. The whole system is restart-proof by design: the database is durable, the chain is replayable, and in-flight money refunds itself.
