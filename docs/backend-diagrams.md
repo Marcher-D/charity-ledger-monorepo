@@ -169,3 +169,42 @@ any PENDING older than 15 min
 stop
 @enduml
 ```
+
+## 5. Duplicate storm → idempotency funnel (slide 6 right side)
+
+```plantuml
+@startuml
+skinparam backgroundColor #16181d
+skinparam defaultFontColor #e8e6e3
+skinparam defaultFontSize 16
+skinparam ArrowColor #4ade80
+skinparam ArrowFontColor #b9c2cc
+skinparam ArrowThickness 1.5
+skinparam shadowing false
+skinparam ranksep 55
+skinparam rectangle {
+  BackgroundColor #1f2937
+  BorderColor #4ade80
+  FontColor #e8e6e3
+}
+
+rectangle "node-0\nTXN_VALIDATED" as N0 #1f2937
+rectangle "node-1\nTXN_VALIDATED" as N1 #1f2937
+rectangle "node-2\nTXN_VALIDATED" as N2 #1f2937
+rectangle "…  ×16\nTXN_VALIDATED" as NX #1f2937
+
+rectangle "**Layer 1**\ndeterministic event ID\n(same fact = same ID)" as L1 #253041
+rectangle "**Layer 2**\nPENDING guard\n(settled rows can't settle again)" as L2 #253041
+rectangle "**Layer 3**\nrewards ledger in DB\n(one credit per block, restart-proof)" as L3 #253041
+
+rectangle "<size:17>**campaign +100**</size>\napplied **exactly once**" as OUT #234034
+
+N0 -down-> L1
+N1 -down-> L1
+N2 -down-> L1
+NX -down-> L1
+L1 -down-> L2 : survivors
+L2 -down-> L3 : survivors
+L3 -down-> OUT : one effect
+@enduml
+```
