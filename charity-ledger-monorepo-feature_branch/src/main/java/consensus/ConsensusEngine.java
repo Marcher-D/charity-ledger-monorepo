@@ -935,8 +935,10 @@ public class ConsensusEngine {
             stateEngine.getDb().saveCertificate(cert); // FIX #64 (rev)
             boolean applied = stateEngine.applyBlock(emptyBlock);
             if (applied) {
-                // Phase 6 Timeout Hook: fire TXN_REJECTED_TIMEOUT for all un-committed txs
-                eventGateway.publishRejectedTimeout(new ArrayList<>(roundBatch));
+                // Round closed with no block: every staged transaction gets its
+                // final timeout verdict AND the batch is purged from the mempool
+                // (see closeRoundBatch — purging is what makes the verdict final).
+                closeRoundBatch(java.util.Collections.emptySet());
                 networkEngine.setNetworkTipHash(emptyBlock.getHash());
                 networkEngine.setNetworkTip(round);
             } else {
@@ -977,22 +979,30 @@ public class ConsensusEngine {
                 boolean applied = stateEngine.applyBlock(payload);
                 if (applied) {
                     // Phase 6 Commit EventBus Hook & Mempool ACK
+                    java.util.Set<String> committedTxIds = new java.util.HashSet<>();
                     if (payload.getTransactions() != null) {
-                        List<String> committedTxIds = new ArrayList<>();
                         for (Transaction tx : payload.getTransactions()) {
                             eventGateway.publishValidated(tx);
                             committedTxIds.add(tx.getTxId());
                         }
                         // FIX #8 & #64: Send exact txIds to Python Mempool for deletion
-                        sharedBuffer.confirmTxs(committedTxIds);
+                        sharedBuffer.confirmTxs(new ArrayList<>(committedTxIds));
                     }
+                    // Round closed WITH a block: staged transactions that did not
+                    // make it in get their final timeout verdict and are purged —
+                    // same rule as the Bottom path: one round, one final verdict.
+                    closeRoundBatch(committedTxIds);
 
                     networkEngine.setNetworkTipHash(payload.getHash());
                     networkEngine.setNetworkTip(round);
                     System.out.println("[Phase 6] Block committed: " + payload);
                 } else {
+                    // Local apply failure only: the NETWORK certified and committed
+                    // this block, so this node must not broadcast rejections for
+                    // transactions the rest of the network is committing. The
+                    // CatchupService re-syncs this node; verdicts come from the
+                    // healthy nodes.
                     System.err.println("[Phase 6] applyBlock failed for round=" + round);
-                    eventGateway.publishRejectedTimeout(new ArrayList<>(roundBatch));
                 }
             } else {
                 // Do NOT write a substitute empty block here: the network certified a
@@ -1014,6 +1024,31 @@ public class ConsensusEngine {
         networkEngine.getForwardCache().purge(currentRound);
         System.out.println("[Phase 6] Round " + round + " complete. Advancing to round " + currentRound + ".");
         sharedBuffer.fetchNextBatch();
+    }
+
+    /**
+     * The round's close is the FINAL verdict for everything it staged:
+     * committed transactions already got TXN_VALIDATED, invalid ones already got
+     * TXN_REJECTED(Invalid) during validation; everything else receives the
+     * timeout verdict here. Then the WHOLE staged batch is purged from the
+     * mempool, so no later round can commit a transaction whose failure the
+     * backend was already told about (that contradiction refunded money on the
+     * website that the chain then applied anyway). Purging also stops invalid
+     * transactions from lingering in the mempool and being re-staged forever.
+     *
+     * EventGateway's per-txId dedup guarantees the timeout verdict never
+     * overwrites an already-sent Invalid/Validated verdict from this node.
+     */
+    private void closeRoundBatch(java.util.Set<String> committedTxIds) {
+        List<Transaction> leftovers = new ArrayList<>();
+        List<String> allStagedIds = new ArrayList<>();
+        for (Transaction tx : roundBatch) {
+            if (tx == null || tx.getTxId() == null) continue;
+            allStagedIds.add(tx.getTxId());
+            if (!committedTxIds.contains(tx.getTxId())) leftovers.add(tx);
+        }
+        if (!leftovers.isEmpty()) eventGateway.publishRejectedTimeout(leftovers);
+        if (!allStagedIds.isEmpty()) sharedBuffer.confirmTxs(allStagedIds);
     }
 
     // =========================================================================

@@ -30,13 +30,21 @@ for i in $(seq 1 60); do
   sleep 2
 done
 
-# Both JVMs get tight heap caps: without them each defaults to ~25% of the
+# Both JVMs get heap ceilings: without them each defaults to ~25% of the
 # Docker VM's memory, and a dozen node containers starve the rest of the
-# stack until the OOM killer takes out the backend/RabbitMQ. The chain state
-# is tiny (SQLite on disk, 10-tx blocks); these are generous.
+# stack until the OOM killer takes out the backend/RabbitMQ.
+#
+# The ceiling is UNIFORM for every node (configurable via NODE_HEAP):
+# validator-ness is dynamic — any node becomes a validator once its stake
+# enters the sortition lookback — so memory must not depend on node index.
+# Ceilings are not reservations: an observer with a 256m ceiling still only
+# uses ~150m; validators get the GC breathing room they need (GC pauses on
+# a starved validator delay votes, which is what produces empty rounds).
+NODE_HEAP="${NODE_HEAP:-256m}"
 
 # Signing service in the background (same identity derivation as the node).
 java -Xms16m -Xmx64m -cp blockchain.jar network.NodeSignerService "$NODE_INDEX" "$SIGNER_PORT" &
 
 # Consensus node in the foreground (container lives and dies with it).
-exec java -Xms32m -Xmx160m -cp blockchain.jar app.Main "$NODE_INDEX" "$TOTAL_NODES" "$MEMPOOL_API_URL" "$EVENT_BUS_URL"
+exec java -Xms32m -Xmx"$NODE_HEAP" -XX:MaxGCPauseMillis=50 \
+     -cp blockchain.jar app.Main "$NODE_INDEX" "$TOTAL_NODES" "$MEMPOOL_API_URL" "$EVENT_BUS_URL"

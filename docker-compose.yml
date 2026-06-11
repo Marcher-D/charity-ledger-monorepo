@@ -89,6 +89,12 @@ services:
     environment:
       # Keep the orchestrator JVM small (it only spawns containers).
       - JAVA_TOOL_OPTIONS=-Xms32m -Xmx128m
+      # Per-node memory knobs (UNIFORM for every node — validator-ness is
+      # dynamic, so never tier by index). Defaults shown; uncomment to tune:
+      #   NODE_HEAP          consensus JVM heap ceiling   (default 256m)
+      #   NODE_MEMORY_LIMIT  container hard memory limit  (default 384m)
+      # - NODE_HEAP=256m
+      # - NODE_MEMORY_LIMIT=384m
       - ORCHESTRATOR_PORT=7000
       # Start the chain fresh on every boot: the consensus core only reliably
       # supports nodes that start together at round 0 (a chain killed mid-round

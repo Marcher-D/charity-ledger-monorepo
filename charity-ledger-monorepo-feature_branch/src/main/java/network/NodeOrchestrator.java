@@ -207,20 +207,25 @@ public class NodeOrchestrator {
                     .start()
                     .waitFor();
 
+            // Hard memory cap per node. Uncapped, each node JVM sizes its heap
+            // off the whole Docker VM (~25%) and 16 nodes alone ate ~7GB, so
+            // the OOM killer started shooting the backend and RabbitMQ.
+            // UNIFORM for every node (validator-ness is dynamic — never tier
+            // by index); override with NODE_MEMORY_LIMIT / NODE_HEAP env.
+            String memoryLimit = System.getenv().getOrDefault("NODE_MEMORY_LIMIT", "384m");
+            String nodeHeap    = System.getenv().getOrDefault("NODE_HEAP", "256m");
+
             command.addAll(List.of(
                 "docker", "run", "-d",
                 "--name", "node-" + nodeIndex,
                 "--hostname", "node-" + nodeIndex,
                 "--network", config.dockerNetwork(),
-                // Hard memory cap per node. Uncapped, each node JVM sizes its
-                // heap off the whole Docker VM (~25%) and 16 nodes alone ate
-                // ~7GB, so the OOM killer started shooting the backend and
-                // RabbitMQ. The entrypoint also passes -Xmx to both JVMs.
-                "--memory", "384m",
+                "--memory", memoryLimit,
                 // If a node is OOM-killed or crashes anyway, bring it back —
                 // it resumes from its DB and the CatchupService re-syncs it.
                 "--restart", "on-failure",
                 "-e", "NODE_HOST_PATTERN=node-%d",
+                "-e", "NODE_HEAP=" + nodeHeap,
                 "-v", config.nodesVolume() + ":/app/nodes",
                 config.nodeImage(),
                 String.valueOf(nodeIndex), String.valueOf(config.totalNodes()),
