@@ -155,7 +155,7 @@ public class SecurityConfig {
 
     @Bean
     CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}") String allowedOrigins
+            @Value("${app.cors.allowed-origins:*}") String allowedOrigins
     ) {
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
@@ -163,7 +163,14 @@ public class SecurityConfig {
                 .toList();
 
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(origins);
+        // Origin PATTERNS (support "*" and wildcards like http://192.168.*).
+        // Browsers send an Origin header on every POST — even same-origin ones —
+        // so a fixed localhost whitelist 403'd ("Invalid CORS request") all
+        // mutating requests from any other device on the network, while GETs
+        // (no Origin when same-origin) and curl (no Origin at all) worked.
+        // Auth is a Bearer header (no cookies, allowCredentials stays false),
+        // so a permissive default is safe here.
+        configuration.setAllowedOriginPatterns(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         configuration.setMaxAge(3600L);

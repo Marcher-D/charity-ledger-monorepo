@@ -54,10 +54,13 @@ spring:
 
 # Custom application-specific settings.
 app:
-  # Browser frontend origins allowed to call this API.
-  # Add more comma-separated origins with APP_CORS_ALLOWED_ORIGINS if needed.
+  # Browser origin PATTERNS allowed to call this API ("*" = any, supports
+  # wildcards like http://192.168.*). The site is served same-origin through
+  # the frontend's nginx and auth is a Bearer header (no cookies), so the
+  # permissive default is fine; restrict via APP_CORS_ALLOWED_ORIGINS if
+  # this is ever exposed beyond a trusted network.
   cors:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}
 
   # JWT settings used by JwtService.
   jwt:
