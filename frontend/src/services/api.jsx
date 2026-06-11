@@ -7,7 +7,11 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, ""
 export async function apiRequest(path, options = {}) {
   // [BỔ SUNG] Bọc toàn bộ logic vào khối try để bắt mọi loại lỗi mạng
   try {
-    const token = localStorage.getItem("accessToken");
+    // Never attach a stored token to login/register: a stale token from a
+    // previous session (or another deployment) must not be able to break
+    // creating a brand-new session.
+    const isAuthEndpoint = path.startsWith("/api/v1/auth/");
+    const token = isAuthEndpoint ? null : localStorage.getItem("accessToken");
     const hasBody = options.body !== undefined && options.body !== null;
 
     const headers = {

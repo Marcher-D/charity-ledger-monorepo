@@ -75,11 +75,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             }
-        } catch (JwtException | IllegalArgumentException exception) {
-            // Invalid/malformed/expired token. Clear any partial authentication and reject request.
+        } catch (JwtException | IllegalArgumentException |
+                 org.springframework.security.core.userdetails.UsernameNotFoundException exception) {
+            // Invalid/expired token, or a token for an account that no longer
+            // exists (e.g. browser kept a JWT from before a database reset, or
+            // from another deployment sharing the same secret). Treat the
+            // request as unauthenticated and let the authorization layer
+            // decide: public endpoints (register/login) keep working, protected
+            // endpoints get a clean 401 from the entry point. Rejecting here
+            // broke registration for every browser holding a stale token.
             SecurityContextHolder.clearContext();
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid bearer token");
-            return;
         }
 
         // Continue to the next filter/controller after authentication work is done.
