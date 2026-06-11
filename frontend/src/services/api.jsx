@@ -1,4 +1,8 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/$/, "");
+// Default to same-origin: in Docker, nginx proxies /api/ to the backend
+// container, so the site works from any device that can reach the host
+// (other laptops/phones on the same network), not just localhost.
+// `npm run dev` outside Docker still targets localhost:8080 via .env.development.
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
 export async function apiRequest(path, options = {}) {
   // [BỔ SUNG] Bọc toàn bộ logic vào khối try để bắt mọi loại lỗi mạng
