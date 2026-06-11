@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,8 +36,9 @@ public class PendingTransactionExpiryJob {
     private static final Logger log = LoggerFactory.getLogger(PendingTransactionExpiryJob.class);
 
     // Consensus confirms in seconds; even a post-restart BBA recovery finishes
-    // well within this window. Anything older is unrecoverable.
-    private static final Duration EXPIRY = Duration.ofMinutes(15);
+    // well within this window. Anything older is unrecoverable. Configurable so
+    // a live demo can refund a dead chain's victims in minutes instead of 15.
+    private final Duration expiry;
 
     private final TransactionCacheRepository transactionRepository;
     private final UserRepository userRepository;
@@ -45,17 +47,19 @@ public class PendingTransactionExpiryJob {
     public PendingTransactionExpiryJob(
             TransactionCacheRepository transactionRepository,
             UserRepository userRepository,
-            CampaignRepository campaignRepository
+            CampaignRepository campaignRepository,
+            @Value("${app.pending-expiry-minutes:15}") long pendingExpiryMinutes
     ) {
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
         this.campaignRepository = campaignRepository;
+        this.expiry = Duration.ofMinutes(pendingExpiryMinutes);
     }
 
     @Scheduled(fixedDelay = 60_000)
     @Transactional
     public void expireOrphanedPendingTransactions() {
-        Instant cutoff = Instant.now().minus(EXPIRY);
+        Instant cutoff = Instant.now().minus(expiry);
         List<TransactionCache> orphans =
                 transactionRepository.findByStatusAndCreatedAtBefore(TransactionStatus.PENDING, cutoff);
 
@@ -66,7 +70,7 @@ public class PendingTransactionExpiryJob {
             log.warn("Expired orphaned PENDING transaction {} (type={}, amount={}, created={}) — "
                             + "no on-chain outcome received within {} minutes",
                     transaction.getId(), transaction.getType(), transaction.getAmount(),
-                    transaction.getCreatedAt(), EXPIRY.toMinutes());
+                    transaction.getCreatedAt(), expiry.toMinutes());
         }
     }
 

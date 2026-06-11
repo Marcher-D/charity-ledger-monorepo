@@ -22,6 +22,11 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:admin}
     # Default password from the project draft/docker-compose example.
     password: ${SPRING_DATASOURCE_PASSWORD:secretpassword}
+    hikari:
+      # Spring's default pool is 10 connections. Registration holds a request
+      # thread (and its connection) for the 2-5s the orchestrator needs to
+      # docker-run a node, so a classroom burst of sign-ups needs headroom.
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE:30}
 
   # Flyway runs SQL migrations from src/main/resources/db/migration.
   flyway:
@@ -54,6 +59,10 @@ spring:
 
 # Custom application-specific settings.
 app:
+  # Minutes before a PENDING transaction with no on-chain verdict is failed
+  # and refunded by PendingTransactionExpiryJob. 15 is the safe default; a
+  # live demo can lower it (e.g. 3) so a dead chain refunds people quickly.
+  pending-expiry-minutes: ${APP_PENDING_EXPIRY_MINUTES:15}
   # Browser origin PATTERNS allowed to call this API ("*" = any, supports
   # wildcards like http://192.168.*). The site is served same-origin through
   # the frontend's nginx and auth is a Bearer header (no cookies), so the

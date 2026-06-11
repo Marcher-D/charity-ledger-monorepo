@@ -150,6 +150,22 @@ public class ChainStateReconciler implements ApplicationRunner {
             if (staked.compareTo(BigDecimal.ZERO) <= 0) {
                 continue;
             }
+            if (replayStakeWithRetry(user, staked)) {
+                stakes++;
+            }
+        }
+        log.info("Reconciliation complete: {} stake(s) replayed", stakes);
+    }
+
+    // A stake is signed by the user's OWN node, and after a chain reset the
+    // orchestrator staggers observer respawns (NODE_RESPAWN_STAGGER_MS) — this
+    // user's signer may come up minutes after the deposits replay. Retry
+    // patiently instead of dropping the stake (which would desync web vs chain
+    // until the next epoch).
+    private boolean replayStakeWithRetry(AppUser user, BigDecimal staked) {
+        final int attempts = 8;
+        final long retryDelayMs = 30_000L;
+        for (int attempt = 1; attempt <= attempts; attempt++) {
             try {
                 NodeSignResponse signed = nodeSignerClient.sign(user.getNodeIndex(), new NodeSignRequest(
                         "STAKE", null, staked.doubleValue(),
@@ -159,12 +175,20 @@ public class ChainStateReconciler implements ApplicationRunner {
                         signed.txId(), signed.type(), signed.senderPubKey(), signed.receiverPubKey(),
                         signed.amount(), signed.firstValid(), signed.lastValid(), signed.timestamp(),
                         signed.note(), signed.ed25519Signature()));
-                stakes++;
+                return true;
             } catch (RuntimeException e) {
-                log.error("Failed to replay stake for user {}: {}", user.getAccountId(), e.getMessage());
+                log.warn("Stake replay for user {} failed (attempt {}/{}): {}",
+                        user.getAccountId(), attempt, attempts, e.getMessage());
+                try {
+                    Thread.sleep(retryDelayMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
             }
         }
-        log.info("Reconciliation complete: {} stake(s) replayed", stakes);
+        log.error("Failed to replay stake for user {} after {} attempts", user.getAccountId(), attempts);
+        return false;
     }
 
     private BigDecimal sum(BigDecimal... values) {

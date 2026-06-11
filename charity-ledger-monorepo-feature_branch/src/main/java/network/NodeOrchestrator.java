@@ -54,6 +54,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class NodeOrchestrator {
 
     private static final AtomicInteger nextNodeIndex = new AtomicInteger(0);
+    // The chain's GenesisConfig funds/stakes exactly the first five identities;
+    // they must boot together (no respawn stagger) so round 1 can certify.
+    private static final int GENESIS_NODE_COUNT = 5;
     // Incremented on every CHAIN_RESET_ON_START wipe; exposed via /health so the
     // backend knows when to replay balances onto a fresh chain.
     private static final java.util.concurrent.atomic.AtomicLong chainEpoch =
@@ -110,16 +113,37 @@ public class NodeOrchestrator {
         chainEpoch.set(loadEpoch(epochFile));
 
         // Bring every previously assigned node back to life (see class javadoc).
+        //
+        // The genesis validators (first 5) start together so round 1 can
+        // certify, but the remaining nodes are STAGGERED: measured live, ~60
+        // observers booting simultaneously (each catching up + relaying every
+        // vote) desync the validators' BBA iterations and wedge consensus for
+        // tens of minutes, while the same nodes joining gradually are harmless.
+        // Runs on its own thread so the HTTP API (spawn_node, /health) is up
+        // immediately and the backend can bootstrap/register while we respawn.
+        long respawnStaggerMs = Long.parseLong(env("NODE_RESPAWN_STAGGER_MS", "3000"));
         int known = nextNodeIndex.get();
         if (known > 0) {
-            System.out.println("[Orchestrator] Respawning " + known + " previously assigned node(s)...");
-            for (int i = 0; i < known; i++) {
-                try {
-                    spawnNode(i, config);
-                } catch (Exception e) {
-                    System.err.println("[Orchestrator] Failed to respawn node " + i + ": " + e.getMessage());
+            System.out.println("[Orchestrator] Respawning " + known + " previously assigned node(s)"
+                    + (known > GENESIS_NODE_COUNT ? " (staggered " + respawnStaggerMs + "ms after genesis)" : "")
+                    + "...");
+            Thread respawner = new Thread(() -> {
+                for (int i = 0; i < known; i++) {
+                    try {
+                        if (i > GENESIS_NODE_COUNT - 1 && respawnStaggerMs > 0) {
+                            Thread.sleep(respawnStaggerMs);
+                        }
+                        spawnNode(i, config);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    } catch (Exception e) {
+                        System.err.println("[Orchestrator] Failed to respawn node " + i + ": " + e.getMessage());
+                    }
                 }
-            }
+                System.out.println("[Orchestrator] Respawn complete (" + known + " node(s)).");
+            }, "node-respawner");
+            respawner.start();
         }
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);

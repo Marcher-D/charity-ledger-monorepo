@@ -25,11 +25,30 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class TokenBucketRateLimiter {
 
+    // Limits must clear HONEST gossip at full network size: every peer relays
+    // every vote, so during a BBA panic burst one peer legitimately forwards
+    // tens of messages per second. The old 10 msg/s budget (sized for a 5-node
+    // demo) banned the validators' own relays at ~50 nodes — dropped votes ⇒
+    // no supermajority ⇒ more panic iterations ⇒ more traffic ⇒ more bans, a
+    // self-reinforcing consensus wedge. These ceilings still stop brute-force
+    // floods (a signature-grinding attacker needs thousands/s to hurt CPU).
+
     // Maximum tokens an IP can accumulate (burst capacity)
-    private static final double MAX_TOKENS   = 100.0;
+    private static final double MAX_TOKENS   = envDouble("RATE_LIMIT_BURST", 1000.0);
 
     // Token refill rate per second
-    private static final double REFILL_RATE  = 10.0;
+    private static final double REFILL_RATE  = envDouble("RATE_LIMIT_REFILL_PER_SEC", 100.0);
+
+    private static double envDouble(String name, double fallback) {
+        String raw = System.getenv(name);
+        if (raw == null || raw.isBlank()) return fallback;
+        try {
+            return Double.parseDouble(raw.trim());
+        } catch (NumberFormatException e) {
+            System.err.println("[RateLimit] Ignoring invalid " + name + "=" + raw);
+            return fallback;
+        }
+    }
 
     // Ban duration in milliseconds (1 minute)
     private static final long   BAN_DURATION_MS = 60_000L;

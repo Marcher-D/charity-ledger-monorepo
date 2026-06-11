@@ -109,7 +109,9 @@ services:
       # Peer-list size baked into every spawned node (max node count for full
       # P2P connectivity). Raise it for bigger networks; the chain only ever
       # funds/stakes the FIRST FIVE identities (the genesis validators).
-      - TOTAL_NODES=50
+      # 80 = headroom for a 30-50 person classroom (users + campaigns + genesis);
+      # nodes tolerate unreachable peers, so unspawned indices cost nothing.
+      - TOTAL_NODES=80
       # Passed to every node: where to poll transactions and publish events.
       - MEMPOOL_API_URL=http://mempool:8080
       - EVENT_BUS_URL=amqp://admin:admin@rabbitmq:5672
@@ -155,6 +157,10 @@ services:
       - APP_ONCHAIN_NODE_HOST_PATTERN=node-%d
       - APP_ONCHAIN_SIGNER_PORT=7100
       - APP_ONCHAIN_GENESIS_NODE_COUNT=5
+      # Minutes before a PENDING transaction with no on-chain verdict is
+      # auto-FAILED and refunded (safety net when the chain is down). Default
+      # 15; set low (3) for live demos so a dead chain refunds people quickly.
+      - APP_PENDING_EXPIRY_MINUTES=3
     depends_on:
       postgres:
         condition: service_healthy
