@@ -2,8 +2,6 @@ import { useState } from 'react';
 
 export default function WalletPanel({
   profile,
-  isToggling,
-  onToggleValidator,
   isStaking,
   isUnstaking,
   onStake,
@@ -22,11 +20,13 @@ export default function WalletPanel({
   const stakedBalance = Number(profile.stakedBalance) || 0;
   const requestedAmount = Number(amount);
   const hasValidAmount = Number.isFinite(requestedAmount) && requestedAmount > 0;
-  const actionInProgress = isStaking || isUnstaking || isToggling || isDepositing || isWithdrawing;
+  const actionInProgress = isStaking || isUnstaking || isDepositing || isWithdrawing;
   const canDeposit = hasValidAmount && !actionInProgress;
   const canWithdraw = hasValidAmount && requestedAmount <= availableBalance && !actionInProgress;
   const canStake = hasValidAmount && requestedAmount <= availableBalance && !actionInProgress;
-  const canUnstake = hasValidAmount && requestedAmount <= stakedBalance && !profile.activeValidator && !actionInProgress;
+  // Validator participation is automatic on-chain (any staked node becomes a
+  // validator once its stake enters the sortition lookback) — no manual toggle.
+  const canUnstake = hasValidAmount && requestedAmount <= stakedBalance && !actionInProgress;
 
   const handleDeposit = async () => {
     const success = await onDeposit(amount);
@@ -109,22 +109,8 @@ export default function WalletPanel({
           onClick={handleUnstake}
           disabled={!canUnstake}
           className="px-4 py-2 bg-brand-panel text-brand-creamMuted border border-brand-line rounded-lg text-sm hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed"
-          title={profile.activeValidator ? 'Leave validator mode before unstaking' : undefined}
         >
           {isUnstaking ? 'Unstaking...' : 'Unstake TCL'}
-        </button>
-
-        <button
-          type="button"
-          onClick={onToggleValidator}
-          disabled={isToggling || isStaking || isUnstaking}
-          className={`px-4 py-2 rounded-lg text-sm lg:ml-auto border transition-colors ${
-            profile.activeValidator
-              ? 'bg-red-500/10 text-red-500 border-red-500/50 hover:bg-red-500 hover:text-brand-cream'
-              : 'bg-brand-success/10 text-brand-success border-brand-success/50 hover:bg-brand-success hover:text-brand-dark'
-          } ${isToggling || isStaking || isUnstaking ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {isToggling ? 'Processing...' : (profile.activeValidator ? 'Leave Validator' : 'Become Validator')}
         </button>
       </div>
     </div>

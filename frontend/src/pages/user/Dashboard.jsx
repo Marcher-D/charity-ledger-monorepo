@@ -15,7 +15,6 @@ export default function Dashboard() {
   const [profile, setProfile] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isToggling, setIsToggling] = useState(false);
   const [isStaking, setIsStaking] = useState(false);
   const [isUnstaking, setIsUnstaking] = useState(false);
   const [isDepositing, setIsDepositing] = useState(false);
@@ -177,25 +176,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleToggleValidator = async () => {
-    setIsToggling(true);
-    try {
-      const currentAction = profile.activeValidator ? "OPT_OUT" : "OPT_IN";
-      
-      await apiRequest('/api/v1/transactions/validator/toggle', {
-        method: 'POST',
-        body: JSON.stringify({ action: currentAction }) 
-      });
-      
-      toast.success(profile.activeValidator ? "Has turned off Node Validator" : "Has activated Node Validator PPoS!");
-      fetchDashboardData(); 
-    } catch (err) {
-      toast.error(err.message || "Validator status switching error");
-    } finally {
-      setIsToggling(false);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -210,8 +190,6 @@ export default function Dashboard() {
       
       <WalletPanel
         profile={profile}
-        isToggling={isToggling}
-        onToggleValidator={handleToggleValidator}
         isStaking={isStaking}
         isUnstaking={isUnstaking}
         onStake={handleStake}

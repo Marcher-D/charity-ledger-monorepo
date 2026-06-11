@@ -49,8 +49,17 @@ export default function Navbar({ isLoggedIn, onLogout, authVersion }) {
         .catch(err => {
           console.error("Navbar error:", err.message);
           // Chỉ báo lỗi nếu User thường thật sự bị sập API
-          toast.error("Cannot load wallet data!"); 
+          toast.error("Cannot load wallet data!");
         });
+
+      // 5. Tự làm mới số dư mỗi 5 giây — giao dịch settle qua consensus nên
+      // số trên Navbar phải tự cập nhật, không bắt người dùng F5.
+      const refreshId = setInterval(() => {
+        apiRequest('/api/v1/users/me')
+          .then(data => setWalletInfo(data))
+          .catch(() => { /* lỗi tạm thời: giữ số cũ, lần sau thử lại */ });
+      }, 5000);
+      return () => clearInterval(refreshId);
 
     } catch (error) {
       console.error("Token reading error:", error);
@@ -112,8 +121,8 @@ export default function Navbar({ isLoggedIn, onLogout, authVersion }) {
                   <div className="flex flex-col text-right leading-none">
                     {walletInfo ? (
                       <>
-                        <span className="font-bold text-brand-success text-sm">{walletInfo.availableBalance} TCL</span>
-                        <span className="text-[10px] text-brand-creamMuted mt-1">{walletInfo.pendingBalance} pending</span>
+                        <span className="font-bold text-brand-success text-sm">{(Number(walletInfo.availableBalance) || 0).toFixed(2)} TCL</span>
+                        <span className="text-[10px] text-brand-creamMuted mt-1">{(Number(walletInfo.pendingBalance) || 0).toFixed(2)} pending</span>
                       </>
                     ) : (
                       <span className="font-bold text-brand-success text-sm">My Dashboard</span>
