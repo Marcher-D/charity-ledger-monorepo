@@ -64,16 +64,20 @@ public class CatchupService {
             for (Block b : fetchedBlocks) {
                 // Bug R Fix: Cryptographically verify the block's supermajority certificate before applying!
                 if (!isCertifiedBlock(b)) {
-                    System.err.println("[CatchupService] WARNING: Rejected uncertified or forged block at round " + b.getRound());
+                    // Usually transient: the peer served the block inside the small
+                    // window before its certificate row was written, or the response
+                    // raced a fresh round. The next sync iteration (2s) refetches.
+                    System.err.println("[CatchupService] Rejected uncertified or forged block at round " +
+                                       b.getRound() + " — will refetch on next sync.");
                     break; // Stop syncing on first invalid block
                 }
 
+                // Cert BEFORE block: we serve catch-up peers ourselves, and a block
+                // row without its cert row would make them reject the round.
+                stateEngine.getDb().saveCertificate(b.getCertificate());
                 boolean applied = stateEngine.applyBlock(b);
                 if (applied) {
                     System.out.println("[CatchupService] Applied caught-up block: " + b.getRound());
-                    // Bug S Fix implicitly covered by saving cert
-                    stateEngine.getDb().saveCertificate(b.getCertificate());
-
                     networkEngine.setNetworkTip(b.getRound());
                     networkEngine.setNetworkTipHash(b.getHash());
                 } else {

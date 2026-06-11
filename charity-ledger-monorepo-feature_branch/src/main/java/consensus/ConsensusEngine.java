@@ -928,9 +928,13 @@ public class ConsensusEngine {
             // stalled there forever.
             emptyBlock.setCertificate(cert);
 
+            // Persist the cert BEFORE the block: getBlock() serves catch-up peers,
+            // and a block row without its cert row (the old ordering's window)
+            // makes them reject the round as uncertified until their next retry.
+            // A cert row without a block row is harmless (getBlock returns null).
+            stateEngine.getDb().saveCertificate(cert); // FIX #64 (rev)
             boolean applied = stateEngine.applyBlock(emptyBlock);
             if (applied) {
-                stateEngine.getDb().saveCertificate(cert); // FIX #64 (rev)
                 // Phase 6 Timeout Hook: fire TXN_REJECTED_TIMEOUT for all un-committed txs
                 eventGateway.publishRejectedTimeout(new ArrayList<>(roundBatch));
                 networkEngine.setNetworkTipHash(emptyBlock.getHash());
@@ -968,10 +972,10 @@ public class ConsensusEngine {
 
             if (payload != null) {
                 payload.setCertificate(cert);
+                // Cert BEFORE block — see the Bottom path above for why.
+                stateEngine.getDb().saveCertificate(cert);
                 boolean applied = stateEngine.applyBlock(payload);
                 if (applied) {
-                    stateEngine.getDb().saveCertificate(cert);
-
                     // Phase 6 Commit EventBus Hook & Mempool ACK
                     if (payload.getTransactions() != null) {
                         List<String> committedTxIds = new ArrayList<>();
