@@ -212,6 +212,14 @@ public class NodeOrchestrator {
                 "--name", "node-" + nodeIndex,
                 "--hostname", "node-" + nodeIndex,
                 "--network", config.dockerNetwork(),
+                // Hard memory cap per node. Uncapped, each node JVM sizes its
+                // heap off the whole Docker VM (~25%) and 16 nodes alone ate
+                // ~7GB, so the OOM killer started shooting the backend and
+                // RabbitMQ. The entrypoint also passes -Xmx to both JVMs.
+                "--memory", "384m",
+                // If a node is OOM-killed or crashes anyway, bring it back —
+                // it resumes from its DB and the CatchupService re-syncs it.
+                "--restart", "on-failure",
                 "-e", "NODE_HOST_PATTERN=node-%d",
                 "-v", config.nodesVolume() + ":/app/nodes",
                 config.nodeImage(),

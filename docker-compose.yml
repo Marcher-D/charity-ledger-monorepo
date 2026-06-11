@@ -87,6 +87,8 @@ services:
       # orchestrator still listens on 7000 (backend uses http://orchestrator:7000).
       - "7001:7000"
     environment:
+      # Keep the orchestrator JVM small (it only spawns containers).
+      - JAVA_TOOL_OPTIONS=-Xms32m -Xmx128m
       - ORCHESTRATOR_PORT=7000
       # Start the chain fresh on every boot: the consensus core only reliably
       # supports nodes that start together at round 0 (a chain killed mid-round
@@ -125,6 +127,9 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # Bound the backend heap so node containers can't starve it (the JVM
+      # otherwise sizes itself off the whole Docker VM).
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx512m
       # Spring Boot reads SPRING_RABBITMQ_HOST → spring.rabbitmq.host
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
