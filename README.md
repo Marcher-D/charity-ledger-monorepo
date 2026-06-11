@@ -51,6 +51,23 @@ Then open **http://localhost:3000**.
    signed by *your own node*, goes through the RabbitMQ mempool, gets finalized
    by BFT consensus, and the proposer earns 2% of donations as a reward.
 
+## Share it over WiFi (host for friends)
+
+One person runs the stack (steps above); everyone on the same WiFi uses it —
+phones included. The API is served same-origin through the frontend's nginx,
+so no configuration is needed on anyone's device.
+
+1. On the host, find the WiFi IP address:
+   - macOS: `ipconfig getifaddr en0` (or System Settings → Wi-Fi → Details)
+   - Windows: `ipconfig` → IPv4 Address of the Wi-Fi adapter
+2. Everyone opens `http://<host-ip>:3000` (e.g. `http://192.168.1.25:3000`).
+
+Each registration spawns a blockchain node **on the host machine**, so only
+the host pays the CPU cost. If others can't connect: allow Docker through the
+host's firewall (Windows: allow for *Private* networks when prompted), and
+make sure both devices are on the same network (guest WiFi often isolates
+devices).
+
 ## Stop / Restart
 
 ```bash
@@ -58,6 +75,14 @@ Then open **http://localhost:3000**.
 docker rm -f $(docker ps -aq --filter "name=node-")
 docker compose down
 ```
+
+**Restarting a single node is safe** (and a fun thing to demo): with the rest
+of the stack running, `docker stop node-2` … `docker start node-2`. The other
+validators keep finalizing rounds while it is down (4 of 5 still clear the 68%
+threshold); on start it resumes from its own database, the CatchupService
+re-verifies and replays every missed block, and it rejoins live consensus in
+about a minute. User/campaign nodes do the same but return to **observer
+mode** (see below).
 
 **Restarting is safe**: accounts, campaigns and balances live in PostgreSQL and
 survive. The blockchain itself starts **fresh at round 0 on every boot**
@@ -97,6 +122,13 @@ nodes  ──> RabbitMQ event_bus_queue ──> backend updates balances/campaig
   chain's system key.
 - Only the first **5 genesis nodes** have balance/stake at round 0; every later
   user/campaign node starts at 0/0 and must deposit first.
+- **Observer vs validator:** a node only participates in consensus when it has
+  sortition-eligible stake. New user/campaign nodes catch up to the chain tip
+  (re-verifying every block certificate) and then *listen* for finalized blocks
+  in observer mode. After a user stakes, the protocol's R−320 lookback (a
+  flash-loan defense) means the node automatically flips to validator about
+  320 rounds after the STAKE commits and can then propose blocks and earn
+  rewards.
 
 ## Troubleshooting
 
