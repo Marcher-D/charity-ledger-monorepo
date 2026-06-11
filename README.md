@@ -68,6 +68,27 @@ host's firewall (Windows: allow for *Private* networks when prompted), and
 make sure both devices are on the same network (guest WiFi often isolates
 devices).
 
+### Hosting a big group (30–50 people)
+
+Every registration spawns a node container (~135 MB real usage each), so a
+classroom needs more memory than Docker's default allocation:
+
+1. **Docker Desktop → Settings → Resources → Memory: set 12 GB** (on a 16 GB
+   machine). The default ~8 GB fits roughly 20 user nodes; 50 users + campaign
+   nodes need ~8 GB for nodes alone plus ~1.5 GB for the services. This only
+   raises Docker's *ceiling* — macOS itself is never at risk; worst case the
+   OOM killer stops containers inside Docker's VM.
+2. `TOTAL_NODES` in `docker-compose.yml` is the peer-list size baked into
+   every node — it must exceed the total nodes you expect (it is set to 80,
+   enough for 50 users + campaigns + 5 genesis validators).
+3. Optionally set `APP_PENDING_EXPIRY_MINUTES=3` on `backend-api` so that if
+   the chain ever dies mid-demo, everyone's stuck PENDING transactions are
+   auto-refunded in ~3 minutes instead of 15.
+4. **Rehearse before class day**: `scripts/load-rehearsal.sh` registers fake
+   users in ramped stages (20 → 35 → 50) and reports memory and consensus
+   health at each stage — see `docs/LOAD_REHEARSAL.md` for results and the
+   cleanup procedure (the rehearsal fills the database with fake accounts).
+
 ## Stop / Restart
 
 ```bash
@@ -92,7 +113,26 @@ On startup the orchestrator respawns one container per known node, and the
 backend detects the new "chain epoch" and **replays every user's balance onto
 the fresh chain** (system deposits + re-stakes), so the web mirror and the
 chain stay consistent. Transactions that were in flight during a shutdown are
-automatically failed and refunded after 15 minutes.
+automatically failed and refunded after 15 minutes (configurable via
+`APP_PENDING_EXPIRY_MINUTES` on `backend-api`).
+
+### Failure drills (verified)
+
+What actually happens when the chain dies — tested live:
+
+- **All validators down** (or all nodes down): the website stays fully usable —
+  browsing, login, registration all work. Any money action submits, stays
+  PENDING, and is **automatically failed and refunded** after
+  `APP_PENDING_EXPIRY_MINUTES` (set to 3 in compose for demos) — no funds are
+  ever stuck, no manual intervention.
+- **Recovery**: `docker compose restart orchestrator backend-api`. The
+  orchestrator wipes chain state, bumps the epoch, and respawns nodes
+  **staggered** (genesis first, then one node every `NODE_RESPAWN_STAGGER_MS`,
+  default 3 s) — a synchronized mass boot of many nodes is the one thing that
+  wedges consensus, so don't bypass the stagger. The backend replays every
+  balance onto the fresh chain; stake replay retries while late nodes come up.
+- **One node down** stays the safe live-demo trick (see above) — the other
+  validators keep finalizing and it rejoins in about a minute.
 
 **Full reset (fresh chain + empty database):**
 
