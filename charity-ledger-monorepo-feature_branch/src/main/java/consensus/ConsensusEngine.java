@@ -101,6 +101,9 @@ public class ConsensusEngine {
     private final EMATimeout emaTimeout   = new EMATimeout();
     private volatile boolean running      = false;
 
+    /** Tracks observer/validator mode so the transition is only logged once per flip. */
+    private boolean observerMode = false;
+
     /**
      * FIX #9: The batch captured at the start of each round.
      * Set by captureRoundBatch() BEFORE Phase 1 begins.
@@ -159,6 +162,29 @@ public class ConsensusEngine {
                     Thread.sleep(100); // Prevent 100% CPU spinlock while catching up
                     continue;
                 }
+
+                // Stake gate: only sortition-eligible nodes execute consensus rounds.
+                // Uses the same R-320 lookback the rest of the network applies when
+                // verifying votes, so we join exactly when our votes become acceptable.
+                // Zero-stake nodes stay in observer mode: the CatchupService keeps
+                // applying finalized blocks, so they follow the chain in near-realtime.
+                long myStake = stateEngine.getAddressStake(myWallet.getPublicKeyBase64(), currentRound);
+                if (myStake <= 0) {
+                    if (!observerMode) {
+                        observerMode = true;
+                        System.out.println("[ConsensusEngine] OBSERVER mode — no sortition-eligible stake at round "
+                                           + currentRound + "; listening for finalized blocks only.");
+                    }
+                    Thread.sleep(1000);
+                    currentRound = Math.max(currentRound, stateEngine.getLatestRound() + 1);
+                    continue;
+                }
+                if (observerMode) {
+                    observerMode = false;
+                    System.out.println("[ConsensusEngine] VALIDATOR mode — stake visible at lookback for round "
+                                       + currentRound + "; joining consensus.");
+                }
+
                 executeRound(currentRound);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -582,6 +608,7 @@ public class ConsensusEngine {
         String lastKnownHash = BOTTOM;
         int panicCounter = 0;
 
+        bbaLoop:
         while (running) {
             panicCounter++;
             if (panicCounter > BBA_PANIC_LIMIT) {
@@ -621,6 +648,36 @@ public class ConsensusEngine {
                 if (hasValidCertificateInterrupt(round)) {
                     System.out.println("[Phase 5] Certificate interrupt — BBA* complete.");
                     return bbaChoice;
+                }
+
+                // Round-already-finalized escape: a node that rejoins mid-flight can
+                // be stuck arguing about a round the network finalized long ago (the
+                // CatchupService applies it in the background). Abandon immediately —
+                // the run loop resumes from the fresh ledger tip.
+                if (stateEngine.getLatestRound() >= round) {
+                    System.out.println("[Phase 5] Round " + round +
+                                       " already finalized via catch-up — abandoning BBA*.");
+                    throw new RuntimeException("Round " + round + " finalized behind us — resyncing");
+                }
+
+                // Iteration fast-forward: if a meaningful share of the committee is
+                // already voting on a higher iteration, adopt it. Votes are counted
+                // strictly per-iteration, so once counters desync (e.g. after a
+                // validator restarts mid-round) no iteration can ever reach
+                // threshold and the whole committee spins until panic. Guard: only
+                // jump when the higher iteration carries STRICTLY MORE than 33% of
+                // the expected committee weight, cryptographically re-verified from
+                // the votes' VRF proofs — a malicious node broadcasting fake
+                // high-iteration votes cannot drag honest validators forward.
+                if (networkEngine.getForwardCache()
+                                 .getMaxBufferedIteration(round, VoteMessage.Step.BBA_GOSSIP) > panicCounter) {
+                    int ffIter = findQualifiedFastForwardIteration(round, panicCounter, vrfInput);
+                    if (ffIter > panicCounter) {
+                        System.out.println("[Phase 5] Fast-forwarding BBA iteration " + panicCounter +
+                                           " → " + ffIter + " (>33% verified committee weight ahead).");
+                        panicCounter = ffIter - 1; // loop header ++ lands exactly on ffIter
+                        continue bbaLoop;
+                    }
                 }
 
                 long remaining = deadline - System.currentTimeMillis();
@@ -685,6 +742,41 @@ public class ConsensusEngine {
         }
 
         return BOTTOM;
+    }
+
+    /**
+     * Finds the highest BBA iteration ahead of {@code current} whose buffered
+     * votes carry STRICTLY MORE than 33% of the expected committee weight.
+     * Returns 0 if no higher iteration qualifies.
+     *
+     * Weights are NOT trusted from the vote JSON — each vote's VRF proof is
+     * re-verified against this iteration's VRF input, so neither the iteration
+     * number nor the claimed weight can be forged beyond the sender's real
+     * stake-determined sortition weight.
+     */
+    private int findQualifiedFastForwardIteration(long round, int current, String vrfInput) {
+        final int minWeight = (int)(0.33 * EXPECTED_VOTERS); // must be strictly exceeded
+        network.ForwardCache fc = networkEngine.getForwardCache();
+        int maxIter = fc.getMaxBufferedIteration(round, VoteMessage.Step.BBA_GOSSIP);
+
+        for (int iter = maxIter; iter > current; iter--) {
+            int verifiedWeight = 0;
+            java.util.Set<String> seenSenders = new java.util.HashSet<>();
+            for (VoteMessage v : fc.peekBBA(round, VoteMessage.Step.BBA_GOSSIP, iter)) {
+                if (v == null || v.getSenderPubKey() == null) continue;
+                if (!seenSenders.add(v.getSenderPubKey())) continue; // one vote per sender
+                verifiedWeight += stateEngine.verifyVRFStake(
+                    v.getSenderPubKey(),
+                    v.getVrfProof(),
+                    v.getVrfHash() != null ? v.getVrfHash() : "",
+                    vrfInput + "BBA" + iter,
+                    round,
+                    EXPECTED_VOTERS
+                );
+                if (verifiedWeight > minWeight) return iter;
+            }
+        }
+        return 0;
     }
 
     /**
@@ -796,6 +888,12 @@ public class ConsensusEngine {
         // FIX #44/#45: Drain stale certs from old rounds; wait for cert for THIS round
         long certDeadline = System.currentTimeMillis() + 30_000L;
         while (System.currentTimeMillis() < certDeadline) {
+            // Same escape as Phase 5: if the CatchupService already applied this
+            // round (or beyond), stop waiting for its certificate.
+            if (stateEngine.getLatestRound() >= round) {
+                System.out.println("[Phase 6] Round " + round + " already finalized via catch-up — abandoning wait.");
+                throw new RuntimeException("Round " + round + " finalized behind us — resyncing");
+            }
             BlockCertificate candidate = certificateQueue.poll(1, TimeUnit.SECONDS);
             if (candidate == null) continue;
             
@@ -823,15 +921,16 @@ public class ConsensusEngine {
                 round, stateEngine.getLatestBlockHash(), System.currentTimeMillis(), ""
             );
 
-            // FIX #64: Save bottom cert to DB
-            BlockCertificate bottomCert = new BlockCertificate();
-            bottomCert.setRound(round);
-            bottomCert.setBlockHash(emptyBlock.getHash());
-            emptyBlock.setCertificate(bottomCert);
+            // FIX #64 (rev): Persist the REAL verified bottom certificate (with its
+            // >=68% certify votes, blockHash = BOTTOM_HASH). The previous code saved
+            // a freshly built voteless certificate, which can never pass
+            // verifyCertificate() — every catching-up node rejected the round and
+            // stalled there forever.
+            emptyBlock.setCertificate(cert);
 
             boolean applied = stateEngine.applyBlock(emptyBlock);
             if (applied) {
-                stateEngine.getDb().saveCertificate(bottomCert); // FIX #64
+                stateEngine.getDb().saveCertificate(cert); // FIX #64 (rev)
                 // Phase 6 Timeout Hook: fire TXN_REJECTED_TIMEOUT for all un-committed txs
                 eventGateway.publishRejectedTimeout(new ArrayList<>(roundBatch));
                 networkEngine.setNetworkTipHash(emptyBlock.getHash());
@@ -892,11 +991,16 @@ public class ConsensusEngine {
                     eventGateway.publishRejectedTimeout(new ArrayList<>(roundBatch));
                 }
             } else {
-                System.err.println("[Phase 6] Could not recover block payload for round=" + round + " — writing empty block.");
-                Block emptyBlock = Block.createEmptyBlock(round, stateEngine.getLatestBlockHash(),
-                                                          System.currentTimeMillis(), "");
-                stateEngine.applyBlock(emptyBlock);
-                eventGateway.publishRejectedTimeout(new ArrayList<>(roundBatch));
+                // Do NOT write a substitute empty block here: the network certified a
+                // REAL block for this round, so committing anything else forks this
+                // node off the chain, and the substitute would carry no certificate —
+                // permanently unservable to catching-up peers. Retry the round instead;
+                // the CatchupService fetches the certified block from peers (any gap
+                // >= 1 triggers a sync within 2s) and handleCatchup() advances us.
+                System.err.println("[Phase 6] Could not recover block payload for round=" + round +
+                                   " — deferring to CatchupService.");
+                throw new RuntimeException("Block payload unrecoverable for round " + round +
+                                           " — deferring to CatchupService");
             }
         }
 
@@ -914,7 +1018,16 @@ public class ConsensusEngine {
 
     private String enterRecoveryMode(long round) throws InterruptedException {
         System.out.println("[ConsensusEngine] RECOVERY MODE — waiting for network certificate...");
-        BlockCertificate cert = certificateQueue.take();
+        // Bounded wait. A blocking take() deadlocked the entire network whenever
+        // every validator panicked on the same round: each of them sat here
+        // waiting for a certificate that none of them could produce anymore.
+        // On timeout, retry the round from Phase 1 — every wedged validator does
+        // the same, which also re-aligns their BBA iteration counters.
+        BlockCertificate cert = certificateQueue.poll(60, TimeUnit.SECONDS);
+        if (cert == null) {
+            System.out.println("[ConsensusEngine] Recovery timeout — retrying round " + round + " from Phase 1.");
+            throw new RuntimeException("Recovery timeout — retrying round " + round);
+        }
         System.out.println("[ConsensusEngine] Recovery: Certificate received — resuming.");
         return cert.isBottom() ? BOTTOM : cert.getBlockHash();
     }

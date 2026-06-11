@@ -595,7 +595,13 @@ public class NetworkEngine {
 
     public ForwardCache getForwardCache()                     { return forwardCache; }
     public long         getNetworkTip()                       { return networkTip; }
-    public void         setNetworkTip(long tip)               { this.networkTip = tip; }
+    /**
+     * Monotonic: the tip only ever advances. CatchupService calls this for every
+     * historical block it applies — a plain assignment reset tip 2000 -> 1 and
+     * collapsed the gap to 0 until the next BLOCK_CERTIFICATE gossip, throttling
+     * catch-up to one block per live round.
+     */
+    public void         setNetworkTip(long tip)               { this.networkTip = Math.max(this.networkTip, tip); }
     /** FIX #25: update networkTipHash when the local node commits a new block. */
     public void         setNetworkTipHash(String hash)        { this.networkTipHash = hash; }
     public void         setSharedBuffer(buffer.SharedBuffer sb){ this.sharedBuffer = sb; }

@@ -43,6 +43,9 @@ public class CatchupService {
         scheduler.shutdownNow();
     }
 
+    /** Max rounds fetched per sync iteration — keeps SYNC_RESPONSE messages bounded. */
+    private static final int BATCH_SIZE = 100;
+
     private void syncLoop() {
         try {
             long localTip = stateEngine.getLatestRound();
@@ -51,15 +54,16 @@ public class CatchupService {
 
             if (gap <= 0) return;
 
-            System.out.println("[CatchupService] Gap=" + gap + " detected. Fetching rounds " + (localTip + 1) + " to " + networkTip);
+            // Fetch in bounded batches; the 2s scheduler iterates until the gap closes.
+            long endRound = Math.min(networkTip, localTip + BATCH_SIZE);
+            System.out.println("[CatchupService] Gap=" + gap + " detected. Fetching rounds " + (localTip + 1) + " to " + endRound);
 
-            List<Block> fetchedBlocks = networkEngine.activeFetchAsync(localTip + 1, networkTip).join();
+            List<Block> fetchedBlocks = networkEngine.activeFetchAsync(localTip + 1, endRound).join();
             if (fetchedBlocks == null || fetchedBlocks.isEmpty()) return;
 
             for (Block b : fetchedBlocks) {
                 // Bug R Fix: Cryptographically verify the block's supermajority certificate before applying!
-                BlockCertificate cert = b.getCertificate();
-                if (cert == null || !stateEngine.verifyCertificate(cert, b.getRound())) {
+                if (!isCertifiedBlock(b)) {
                     System.err.println("[CatchupService] WARNING: Rejected uncertified or forged block at round " + b.getRound());
                     break; // Stop syncing on first invalid block
                 }
@@ -68,8 +72,8 @@ public class CatchupService {
                 if (applied) {
                     System.out.println("[CatchupService] Applied caught-up block: " + b.getRound());
                     // Bug S Fix implicitly covered by saving cert
-                    stateEngine.getDb().saveCertificate(cert);
-                    
+                    stateEngine.getDb().saveCertificate(b.getCertificate());
+
                     networkEngine.setNetworkTip(b.getRound());
                     networkEngine.setNetworkTipHash(b.getHash());
                 } else {
@@ -80,5 +84,38 @@ public class CatchupService {
         } catch (Exception e) {
             System.err.println("[CatchupService] Sync error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Verifies that a fetched block is backed by a genuine >=68% supermajority
+     * certificate AND that the certificate actually certifies THIS block.
+     *
+     * Two cases:
+     *  - BOTTOM round: the network agreed on "no block" and every node wrote the
+     *    deterministic empty block (hash = sha256(prevHash|BOTTOM|round)). The
+     *    certificate's blockHash is BOTTOM_HASH, so it cannot match the block hash —
+     *    instead we recompute the canonical empty-block hash from OUR local tip and
+     *    require the fetched block to match it (this also enforces chain linkage).
+     *  - Real block: the certificate's blockHash must equal the block's hash
+     *    (previously unchecked — a peer could pair a valid cert with a different block).
+     */
+    private boolean isCertifiedBlock(Block b) {
+        BlockCertificate cert = b.getCertificate();
+        if (cert == null) return false;
+
+        if (cert.isBottom()) {
+            if (!b.isEmpty()) return false;
+            String expectedHash = crypto.Ed25519Util.sha256Hex(
+                stateEngine.getLatestBlockHash() + "|BOTTOM|" + b.getRound());
+            if (!expectedHash.equals(b.getHash())) {
+                System.err.println("[CatchupService] Bottom block hash mismatch at round " + b.getRound());
+                return false;
+            }
+        } else if (!cert.getBlockHash().equals(b.getHash())) {
+            System.err.println("[CatchupService] Certificate/block hash mismatch at round " + b.getRound());
+            return false;
+        }
+
+        return stateEngine.verifyCertificate(cert, b.getRound());
     }
 }

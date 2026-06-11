@@ -118,6 +118,42 @@ public class ForwardCache {
         return result;
     }
 
+    /**
+     * Returns the highest BBA iteration for which at least one vote is currently
+     * buffered for the given round/step, or 0 if none.
+     *
+     * Used by the BBA* loop as a cheap pre-check for iteration fast-forward: after
+     * a mid-round disruption (e.g. a validator restart) nodes end up on different
+     * iterations, and since votes are counted strictly per-iteration, the
+     * committee can otherwise never reach threshold again for that round.
+     */
+    public int getMaxBufferedIteration(long round, VoteMessage.Step step) {
+        ConcurrentHashMap<String, LinkedBlockingQueue<VoteMessage>> roundMap = cache.get(round);
+        if (roundMap == null) return 0;
+        String prefix = step.name() + ":";
+        int max = 0;
+        for (var entry : roundMap.entrySet()) {
+            if (!entry.getKey().startsWith(prefix) || entry.getValue().isEmpty()) continue;
+            try {
+                int iter = Integer.parseInt(entry.getKey().substring(prefix.length()));
+                if (iter > max) max = iter;
+            } catch (NumberFormatException ignored) {}
+        }
+        return max;
+    }
+
+    /**
+     * Snapshot of the votes buffered for a specific BBA iteration WITHOUT
+     * consuming them (the owning consensus loop still needs to poll/count them
+     * after a fast-forward). Weakly consistent copy.
+     */
+    public List<VoteMessage> peekBBA(long round, VoteMessage.Step step, int iteration) {
+        ConcurrentHashMap<String, LinkedBlockingQueue<VoteMessage>> roundMap = cache.get(round);
+        if (roundMap == null) return List.of();
+        LinkedBlockingQueue<VoteMessage> queue = roundMap.get(step.name() + ":" + iteration);
+        return (queue == null) ? List.of() : new ArrayList<>(queue);
+    }
+
     // -------------------------------------------------------------------------
     // Proposal Block Cache (FIX #18)
     // -------------------------------------------------------------------------
