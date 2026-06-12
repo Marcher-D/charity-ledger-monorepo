@@ -55,6 +55,9 @@ services:
       - RABBITMQ_USERNAME=admin
       - RABBITMQ_PASSWORD=admin
       - MEMPOOL_QUEUE=mempool_queue
+      # Per-block tx cap served to proposers. Bigger blocks = bigger proposal
+      # payloads relayed across the full mesh — keep moderate at 40+ nodes.
+      - MEMPOOL_BATCH_SIZE=25
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -95,6 +98,9 @@ services:
       #   NODE_MEMORY_LIMIT  container hard memory limit  (default 384m)
       # - NODE_HEAP=256m
       # - NODE_MEMORY_LIMIT=384m
+      # Boot-respawn pacing (genesis spawns together, then one node per this
+      # delay). 3000 default; 6000 is gentler when respawning 40+ nodes.
+      - NODE_RESPAWN_STAGGER_MS=6000
       - ORCHESTRATOR_PORT=7000
       # Start the chain fresh on every boot: the consensus core only reliably
       # supports nodes that start together at round 0 (a chain killed mid-round

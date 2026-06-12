@@ -70,10 +70,13 @@ class MempoolMockHandler(BaseHTTPRequestHandler):
 
         parsed_path = urlparse(self.path)
         if parsed_path.path == '/api/mempool/batch':
-            # Just return the top 10 transactions without removing them from the queue
-            # (Removal happens in /api/mempool/confirm_txs)
+            # Just return the top transactions without removing them from the queue
+            # (Removal happens in /api/mempool/confirm_txs). Batch size is the
+            # per-block throughput cap: 50 keeps a multi-thousand-tx soak test
+            # draining at ~50-100 tx/min instead of backing up at 10/round.
+            batch_size = int(os.getenv('MEMPOOL_BATCH_SIZE', '50'))
             with mempool_lock:
-                top_txs = mempool_queue[:10]
+                top_txs = mempool_queue[:batch_size]
 
             response_data = {
                 "batchId": 0, # Legacy field, ignored by new implementation
